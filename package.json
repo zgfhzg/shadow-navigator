@@ -1,1 +1,9 @@
-{"name":"shadow-app","private":true,"type":"module","scripts":{"dev":"python3 -m http.server 4173 --directory dist","test":"node --test engine.test.mjs"}}
+{
+  "name": "shadow-app",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "python3 -m http.server 4173 --directory dist",
+    "test": "node --test engine.test.mjs time.test.mjs"
+  }
+}
