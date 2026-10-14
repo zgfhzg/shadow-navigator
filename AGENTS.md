@@ -1,3 +1,5 @@
 # Project workflow
 
-The user has requested local-only development. Do not publish, deploy, push to the Sites repository, or synchronize source to hosting unless the user explicitly requests deployment again. The existing Sites identity is retained solely to manage or remove the previous deployment.
+The user explicitly authorized pushing this project to https://github.com/zgfhzg/shadow-navigator.git. Preserve existing history; do not force-push. Never commit .env files or API credentials.
+
+The existing Sites deployment is separate from the GitHub repository. A GitHub push does not deploy the site. Preserve its identity and do not publish or synchronize to Sites without a deployment request. The Node API server is local development infrastructure, not part of the existing static Sites runtime.
