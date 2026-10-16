@@ -12,7 +12,7 @@ npm run dev
 - http://localhost:4173/routing.html — API 키 없는 실제 도로 엔진 검증
 - http://localhost:4173/live.html — MapTiler 지도·장소 검색 + 자체 경로 API
 
-개발 서버는 localhost에만 바인딩합니다. 모바일의 localhost는 이 컴퓨터를 가리키지 않습니다. 기존 Sites 배포는 정적 시뮬레이션이며 Node API 서버를 실행하지 않습니다. GitHub 푸시는 배포가 아닙니다.
+개발 서버는 localhost에만 바인딩합니다. 모바일의 localhost는 이 컴퓨터를 가리키지 않습니다. Sites 배포는 공개 체험용 스냅샷을 브라우저 Web Worker에서 계산하며 Node API 서버가 필요하지 않습니다. GitHub 푸시는 배포가 아닙니다.
 
 ## 홍콩 실제 도로 준비
 작은 센트럴 시범 구역을 OSM 공식 API에서 한 번 가져오고 로컬 그래프로 변환합니다. 경로 요청 때 OSM 서버에 요청하지 않습니다.
@@ -72,7 +72,7 @@ npm test
 npm run verify:hongkong
 ```
 
-41개 테스트: 기존 시뮬레이션·시간대, 층 분리·계단·엘리베이터, 접근 제한·일방통행, 불완전 데이터 처리, 독립적인 완화 알고리즘과 무작위 그래프 최단 경로 비교, 그림자 방향·높이·안뜰·부분 건물·야간·누락 정보·통과 시각 평가. 실제 홍콩 데이터는 추가 명령으로 HTTP 설정 → 도로망 → 경로 API까지 검증합니다. 현장 지리 검증과 브라우저 시각 검증을 대체하지 않습니다.
+42개 테스트: 기존 시뮬레이션·시간대, 층 분리·계단·엘리베이터, 접근 제한·일방통행, 불완전 데이터 처리, 독립적인 완화 알고리즘과 무작위 그래프 최단 경로 비교, 그림자 방향·높이·안뜰·부분 건물·야간·누락 정보·통과 시각 평가. 실제 홍콩 데이터는 추가 명령으로 HTTP 설정 → 도로망 → 경로 API까지 검증합니다. 현장 지리 검증과 브라우저 시각 검증을 대체하지 않습니다.
 
 출처: [OSM 데이터와 라이선스](https://www.openstreetmap.org/copyright) · [OSM API](https://wiki.openstreetmap.org/wiki/API_v0.6) · [OSM 실내 구조](https://wiki.openstreetmap.org/wiki/Simple_Indoor_Tagging) · [MapTiler](https://docs.maptiler.com/cloud/api/) · [Overture](https://docs.overturemaps.org/getting-data/overturemaps-py/)
 
@@ -99,3 +99,11 @@ npm run verify:shade
 - `/api/shade?city=hongkong&departure=2026-10-16T04:00:00Z`는 지상 표본·범위·해상도·건물 통계를 반환합니다. 검증 화면의 날짜·시간은 홍콩 기준이며 기본값은 현재 시각입니다.
 
 예제 경로는 정오에 약 29~30%만 평가 가능했습니다. 알 수 없는 구간을 햇빛 0으로 해석하면 안 됩니다. 검증 보고서: `data/hongkong-shade-verification.json`.
+
+
+## 기존 Sites 주소의 공개 체험
+`npm run build`는 `out/`에 정적 배포본을 만듭니다. 첫 화면은 실제 홍콩 경로·그늘 비교이며, 이전 가상 시뮬레이션은 `demo.html`에 보존합니다. `.openai/hosting.json`의 기존 project_id와 공개 범위를 유지합니다.
+
+정적 호스팅에서는 `dist/browser-client.mjs`가 서버 API의 부재를 감지하고 별도의 Web Worker를 사용합니다. Node 서버와 Worker는 `routing/service.mjs`의 같은 계산 코드를 공유합니다. `fixtures/public`의 공개 도로·건물 스냅샷은 재현 가능한 배포를 위해 저장소에 포함합니다. MapTiler 키나 사용자 위치는 포함하지 않습니다. 현재 체험 범위는 홍콩 센트럴이며, 실제 지도 배경·장소 검색은 MapTiler 설정 후 가능합니다. 화면은 실제 도로 형상과 지상 그늘 표본을 표시합니다.
+
+정적 배포본 확인: `npm run preview:public` → http://localhost:4174 (Node API 없이 실행).

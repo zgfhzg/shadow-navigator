@@ -1,0 +1,11 @@
+import {mkdir,copyFile,cp,readFile,writeFile} from 'node:fs/promises';
+const root=new URL('../',import.meta.url),out=new URL('out/',root);
+await mkdir(out,{recursive:true});await cp(new URL('dist/',root),out,{recursive:true});
+await copyFile(new URL('dist/index.html',root),new URL('demo.html',out));
+const html=(await readFile(new URL('dist/routing.html',root),'utf8')).replace('href="./"','href="./demo.html"');
+await writeFile(new URL('index.html',out),html);await writeFile(new URL('routing.html',out),html);
+for(const folder of ['runtime/routing/','runtime/dist/','runtime/data/'])await mkdir(new URL(folder,out),{recursive:true});
+for(const name of ['engine.mjs','shade.mjs','service.mjs','browser-worker.mjs'])await copyFile(new URL(`routing/${name}`,root),new URL(`runtime/routing/${name}`,out));
+await copyFile(new URL('dist/engine.mjs',root),new URL('runtime/dist/engine.mjs',out));
+for(const name of ['hongkong.graph.json','hongkong.geojson'])await copyFile(new URL(`fixtures/public/${name}`,root),new URL(`runtime/data/${name}`,out));
+console.log('Static Hong Kong experience built in out/');

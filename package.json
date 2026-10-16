@@ -10,6 +10,8 @@
     "verify:hongkong": "node scripts/verify-hongkong.mjs",
     "data:buildings": "node scripts/download-buildings.mjs",
     "prepare:buildings": "node scripts/prepare-buildings.mjs",
-    "verify:shade": "node scripts/verify-shade.mjs"
+    "verify:shade": "node scripts/verify-shade.mjs",
+    "build": "node scripts/build-public.mjs",
+    "preview:public": "python3 -m http.server 4174 --directory out"
   }
 }

@@ -9,3 +9,4 @@ data/*.graph.json
 .tools/
 data/*.parts.geojson
 data/*.geojson.state
+out/

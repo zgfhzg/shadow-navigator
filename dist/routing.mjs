@@ -1,8 +1,9 @@
+import {api} from './browser-client.mjs';
 import {DepartureClock,clockLabel} from './time.mjs';
 const $=id=>document.getElementById(id),ns='http://www.w3.org/2000/svg';
 const clock=new DepartureClock(new Date(),'Asia/Hong_Kong');
 let data,project,request=0,shadeRequest=0,results=[];
-async function api(path,params={}){const r=await fetch(path+'?'+new URLSearchParams(params));if(!r.headers.get('content-type')?.includes('application/json'))throw new Error('로컬 Node 서버에서 실행해 주세요.');const data=await r.json();if(!r.ok)throw new Error(data.error);return data;}
+
 function line(coordinates,parent,className){const p=document.createElementNS(ns,'polyline');p.setAttribute('points',coordinates.map(c=>project(c).join(',')).join(' '));p.setAttribute('class',className);parent.append(p);}
 function populate(){const previous=[$('start').value,$('end').value],query=$('node-search').value.trim().toLowerCase();
   for(const [i,id]of ['start','end'].entries()){$(id).replaceChildren();for(const node of data.nodes){const text=`${node.name||'연결 지점'} · ${node.level} · ${node.id}`;if(!query||text.toLowerCase().includes(query))$(id).append(new Option(text,node.id));}
