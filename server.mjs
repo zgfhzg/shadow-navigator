@@ -3,6 +3,8 @@ import {readFile} from 'node:fs/promises';
 import {fileURLToPath} from 'node:url';
 import {cities,geocode} from './providers.mjs';
 import {loadGraph,localDirections,network} from './routing/store.mjs';
+import {loadScene} from './routing/building-store.mjs';
+import {sampleGround} from './routing/shade.mjs';
 const root=new URL('./dist/',import.meta.url);
 const key=process.env.MAPTILER_KEY||'';
 const types={html:'text/html',mjs:'text/javascript',css:'text/css',json:'application/json'};
@@ -16,11 +18,18 @@ export const server=createServer(async(req,res)=>{
       return reply(res,200,{mapKey:key,routingReady:Object.values(available).some(Boolean),routingCities:available,routingEngine:'shadow',cities});
     }
     if(url.pathname==='/api/network') return reply(res,200,await network(url.searchParams.get('city')));
+    if(url.pathname==='/api/shade') {
+      const city=url.searchParams.get('city')||'hongkong',raw=url.searchParams.get('departure');
+      if(raw&&!/(Z|[+-]\d{2}:\d{2})$/i.test(raw))return reply(res,400,{error:'출발 시각의 시간대가 필요합니다.'});
+      const epoch=raw?Date.parse(raw):Date.now(),graph=await loadGraph(city),scene=await loadScene(city);
+      if(!graph.data.bounds)return reply(res,400,{error:'도로망 수집 범위가 필요합니다.'});
+      return reply(res,200,sampleGround(scene,graph.data.bounds,epoch));
+    }
     if(url.pathname==='/api/search') return reply(res,200,await geocode(url.searchParams.get('q'),url.searchParams.get('city'),key));
     if(url.pathname==='/api/route') {
       const parse=name=>{try{return JSON.parse(url.searchParams.get(name));}catch{throw new Error('올바른 좌표가 필요합니다.');}};
       const city=url.searchParams.get('city')||'hongkong';
-      const options={city,mode:url.searchParams.get('mode')||'walk',avoidSteps:url.searchParams.get('avoidSteps')==='true'};
+      const options={city,departure:url.searchParams.get('departure')||Date.now(),withShade:url.searchParams.get('shade')!=='false',mode:url.searchParams.get('mode')||'walk',avoidSteps:url.searchParams.get('avoidSteps')==='true'};
       if(url.searchParams.has('startNode'))Object.assign(options,{startNode:url.searchParams.get('startNode'),endNode:url.searchParams.get('endNode')});
       else Object.assign(options,{start:parse('start'),end:parse('end')});
       return reply(res,200,await localDirections(options));

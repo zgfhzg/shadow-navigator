@@ -6,3 +6,6 @@ data/*.geojson
 .DS_Store
 data/*.osm.json
 data/*.graph.json
+.tools/
+data/*.parts.geojson
+data/*.geojson.state

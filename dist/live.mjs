@@ -17,7 +17,7 @@ async function cityChanged(){
   map?.jumpTo({center:city.center,zoom:14});
   try{const data=await api('/api/buildings',{city:$('city').value});if(request!==version)return;
     const known=data.features.filter(f=>Number.isFinite(f.properties?.height)&&f.properties.height>0).length;
-    $('buildings').textContent=`건물 ${data.features.length}개 · 높이 확인 ${known}개. 그늘 계산 미연결.`;
+    $('buildings').textContent=`건물 ${data.features.length}개 · 높이 확인 ${known}개. 실제 경로의 그늘 평가에 사용합니다.`;
     map?.getSource('buildings')?.setData(data);
   }catch(e){if(request===version)$('buildings').textContent=e.message;}
 }
@@ -38,11 +38,11 @@ for(const id of ['mode','start','end'])$(id).onchange=clearRoute;
 $('route').onclick=async()=>{
   const request=++routeVersion;const epoch=Date.now(),zone=clock.timeZone;
   $('status').textContent='경로를 찾고 있습니다…';$('results').replaceChildren();
-  try{const paths=await api('/api/route',{city:$('city').value,start:$('start').value,end:$('end').value,mode:$('mode').value});if(request!==routeVersion)return;
+  try{const paths=await api('/api/route',{departure:new Date(epoch).toISOString(),city:$('city').value,start:$('start').value,end:$('end').value,mode:$('mode').value});if(request!==routeVersion)return;
     const draw=p=>{map.getSource('route').setData({type:'Feature',properties:{},geometry:p.geometry});const bounds=new maplibregl.LngLatBounds();p.geometry.coordinates.forEach(c=>bounds.extend(c));map.fitBounds(bounds,{padding:45,maxZoom:17});};
-    paths.forEach((p,i)=>{const button=document.createElement('button');button.textContent=`경로 ${i+1} · ${Math.ceil(p.duration)}분 · ${(p.distance/1000).toFixed(1)}km · ${arrivalLabel(epoch,p.duration,zone)} 도착`;button.onclick=()=>draw(p);$('results').append(button);});draw(paths[0]);
+    paths.forEach((p,i)=>{const button=document.createElement('button');button.textContent=`${{fast:'최단 시간',balanced:'균형',shade:'그늘 우선'}[p.kind]} · ${Math.ceil(p.duration)}분 · ${(p.distance/1000).toFixed(1)}km · ${arrivalLabel(epoch,p.duration,zone)} 도착${p.exposure?` · 모델상 그늘 ${p.exposure.shade.toFixed(1)}분 / 평가 불가 ${p.exposure.unknown.toFixed(1)}분`:''}`;button.onclick=()=>draw(p);$('results').append(button);});draw(paths[0]);
     for(const marker of markers)marker.remove();markers=[$('start').value,$('end').value].map(value=>new maplibregl.Marker().setLngLat(JSON.parse(value)).addTo(map));
-    $('status').textContent='자체 엔진의 시범 경로입니다. 그늘 비율은 아직 계산하지 않습니다.';
+    $('status').textContent='자체 엔진의 근사 경로입니다. 높이 정보가 없는 구간은 평가 불가입니다.';
   }catch(e){if(request===routeVersion)$('status').textContent=e.message;}
 };
 try{

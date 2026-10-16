@@ -1,0 +1,13 @@
+import {readFile,writeFile} from 'node:fs/promises';
+import {createHash} from 'node:crypto';
+import {createScene} from '../routing/shade.mjs';
+const city=process.argv[2]||'hongkong';if(!['hongkong','tokyo','osaka','kyoto'].includes(city))throw new Error('지원 도시를 선택해 주세요.');
+const root=new URL('../data/',import.meta.url),read=name=>readFile(new URL(name,root),'utf8').then(JSON.parse);
+const [buildings,parts,state,partState]=await Promise.all([read(`${city}.buildings.geojson`),read(`${city}.parts.geojson`),read(`${city}.buildings.geojson.state`),read(`${city}.parts.geojson.state`)]);
+if(state.last_release!==partState.last_release||JSON.stringify(state.bbox)!==JSON.stringify(partState.bbox))throw new Error('건물과 부분 데이터의 릴리스·범위가 다릅니다.');
+const bbox=state.bbox;
+const digests={};for(const suffix of ['buildings','parts'])digests[suffix]=createHash('sha256').update(await readFile(new URL(`${city}.${suffix}.geojson`,root))).digest('hex');
+const combined={type:'FeatureCollection',features:[...buildings.features,...parts.features],shadow:{provider:'Overture Maps',release:state.last_release,downloadedAt:state.last_run,partsDownloadedAt:partState.last_run,sha256:digests,bounds:[bbox.xmin,bbox.ymin,bbox.xmax,bbox.ymax],license:'ODbL-1.0',attribution:'https://docs.overturemaps.org/attribution/',heightModel:'vertical extent: top = min_height + height',terrainModel:'common flat ground; elevation not supplied'}};
+const scene=createScene(combined);
+await writeFile(new URL(`${city}.geojson`,root),JSON.stringify(combined));
+console.log(JSON.stringify({city,source:combined.shadow,stats:scene.stats},null,2));

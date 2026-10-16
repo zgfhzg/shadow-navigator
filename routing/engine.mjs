@@ -30,9 +30,10 @@ export function edgeMinutes(edge,mode) {
   const minutes=edge.distance/(edge.kind==='steps'?30:mode==='bike'?250:75);
   return edge.kind==='steps'&&edge.from.split('@')[1]!==edge.to.split('@')[1]?Math.max(.35,minutes):minutes;
 }
-export function findRoute(graph,{start,end,mode='walk',avoidSteps=false}={}) {
+export function findRoute(graph,{start,end,mode='walk',avoidSteps=false,costForEdge}={}) {
   if(!['walk','bike'].includes(mode))throw new Error('도보 또는 자전거를 선택해 주세요.');
   if(!graph.nodes.has(start)||!graph.nodes.has(end))throw new Error('도로망의 출발·도착 지점을 선택해 주세요.');
+  const elapsed=new Map([[start,0]]);
   const best=new Map([[start,0]]),previous=new Map(),heap=new Heap();heap.push({id:start,cost:0});
   let visited=0;
   while(heap.data.length){
@@ -40,8 +41,10 @@ export function findRoute(graph,{start,end,mode='walk',avoidSteps=false}={}) {
     if(current.id===end)break;
     for(const edge of graph.adj.get(current.id)){
       if(!edge.modes.includes(mode)||(avoidSteps&&edge.kind==='steps'))continue;
-      const cost=current.cost+edgeMinutes(edge,mode);
-      if(cost<(best.get(edge.to)??Infinity)){best.set(edge.to,cost);previous.set(edge.to,edge);heap.push({id:edge.to,cost});}
+      const minutes=edgeMinutes(edge,mode),step=costForEdge?costForEdge(edge,elapsed.get(current.id),minutes):minutes;
+      if(!Number.isFinite(step)||step<minutes)throw new Error('경로 비용은 이동 시간 이상의 유한값이어야 합니다.');
+      const cost=current.cost+step;
+      if(cost<(best.get(edge.to)??Infinity)){best.set(edge.to,cost);elapsed.set(edge.to,elapsed.get(current.id)+minutes);previous.set(edge.to,edge);heap.push({id:edge.to,cost});}
     }
   }
   if(!best.has(end))throw new Error('이 조건에서 연결된 경로가 없습니다. 범위 밖 도로나 층 연결 누락일 수 있습니다.');
@@ -49,9 +52,9 @@ export function findRoute(graph,{start,end,mode='walk',avoidSteps=false}={}) {
   while(cursor!==start){const edge=previous.get(cursor);segments.push(edge);cursor=edge.from;}segments.reverse();
   const ids=[start,...segments.map(e=>e.to)],coordinates=ids.map(id=>graph.nodes.get(id).coordinate);
   if(coordinates.length===1)coordinates.push(coordinates[0]);
-  return {distance:segments.reduce((sum,e)=>sum+e.distance,0),duration:best.get(end),geometry:{type:'LineString',coordinates},nodes:ids,
+  return {distance:segments.reduce((sum,e)=>sum+e.distance,0),duration:elapsed.get(end),geometry:{type:'LineString',coordinates},nodes:ids,
     segments:segments.map(e=>({id:e.id,wayId:e.wayId,name:e.name,kind:e.kind,covered:e.covered,from:e.from,to:e.to,distance:e.distance,duration:edgeMinutes(e,mode)})),
-    visited,engine:'shadow',warnings:[...(graph.data.warnings||[]),'건물 그늘·실시간 폐쇄·운영 시간·회전 제한은 아직 반영하지 않습니다.']};
+    visited,engine:'shadow',warnings:[...(graph.data.warnings||[]),'실시간 폐쇄·운영 시간·회전 제한은 아직 반영하지 않습니다.']};
 }
 export function snapNode(graph,coordinate,mode='walk',{maxDistance=50,level='ground'}={}) {
   if(!Array.isArray(coordinate)||coordinate.length!==2||!coordinate.every(Number.isFinite)||Math.abs(coordinate[0])>180||Math.abs(coordinate[1])>90)throw new Error('올바른 좌표를 입력해 주세요.');
