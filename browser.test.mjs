@@ -12,3 +12,10 @@ test('public browser engine uses the committed snapshot without a server or API 
   assert.deepEqual(routes.map(r=>r.kind),['fast','balanced','shade']);assert(Math.abs(routes[0].distance-1241.266923878328)<.001);assert(routes[0].exposure.shade>0);assert(routes[0].exposure.unknown>0);
   const night=await runOperation('/api/shade',{city:'hongkong',departure:'2026-10-16T14:00:00Z'},fetcher);assert.equal(night.features.length,0);assert(night.stats.night>0);
 });
+
+test('country search loads a place index without loading city roads or buildings',async()=>{
+ const requested=[];
+ const fetcher=async url=>{requested.push(url.pathname.split('/').at(-1));return {ok:true,json:async()=>JSON.parse(await readFile(new URL('./fixtures/public/tokyo.search.json',import.meta.url),'utf8'))};};
+ const results=await runOperation('/api/places',{city:'tokyo',q:'도쿄역'},fetcher);
+ assert(results.length>0);assert.deepEqual(requested,['tokyo.search.json']);
+});
