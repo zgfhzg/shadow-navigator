@@ -1,0 +1,11 @@
+import {readFile,writeFile,mkdir} from 'node:fs/promises';
+import {importOSM} from '../routing/osm.mjs';
+import {prepareGraph} from '../routing/engine.mjs';
+const [input,city='hongkong']=process.argv.slice(2);
+if(!input||!['hongkong','tokyo','osaka','kyoto'].includes(city))throw new Error('사용법: npm run import:osm -- 입력.osm.json hongkong');
+const osm=JSON.parse(await readFile(input,'utf8'));
+const graph=importOSM(osm,{city,bounds:osm.shadowDownload?.bounds||null});prepareGraph(graph);
+if(!graph.edges.length)throw new Error('가져올 수 있는 도로가 없습니다.');
+await mkdir(new URL('../data/',import.meta.url),{recursive:true});
+await writeFile(new URL(`../data/${city}.graph.json`,import.meta.url),JSON.stringify(graph));
+console.log(JSON.stringify({city,nodes:graph.nodes.length,edges:graph.edges.length,audit:graph.audit},null,2));

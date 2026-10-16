@@ -1,20 +1,29 @@
 import {createServer} from 'node:http';
 import {readFile} from 'node:fs/promises';
 import {fileURLToPath} from 'node:url';
-import {cities,geocode,directions} from './providers.mjs';
+import {cities,geocode} from './providers.mjs';
+import {loadGraph,localDirections,network} from './routing/store.mjs';
 const root=new URL('./dist/',import.meta.url);
-const key=process.env.MAPTILER_KEY||'', routingKey=process.env.GRAPHHOPPER_KEY||'';
+const key=process.env.MAPTILER_KEY||'';
 const types={html:'text/html',mjs:'text/javascript',css:'text/css',json:'application/json'};
 const reply=(res,status,data)=>{res.writeHead(status,{'Content-Type':'application/json','Cache-Control':'no-store'});res.end(JSON.stringify(data));};
 export const server=createServer(async(req,res)=>{
   try {
     const url=new URL(req.url,'http://localhost');
     if(req.method!=='GET') return reply(res,405,{error:'GET 요청만 지원합니다.'});
-    if(url.pathname==='/api/config') return reply(res,200,{mapKey:key,routingReady:Boolean(routingKey),cities});
+    if(url.pathname==='/api/config') {
+      const available={};for(const city of Object.keys(cities)){try{await loadGraph(city);available[city]=true;}catch{available[city]=false;}}
+      return reply(res,200,{mapKey:key,routingReady:Object.values(available).some(Boolean),routingCities:available,routingEngine:'shadow',cities});
+    }
+    if(url.pathname==='/api/network') return reply(res,200,await network(url.searchParams.get('city')));
     if(url.pathname==='/api/search') return reply(res,200,await geocode(url.searchParams.get('q'),url.searchParams.get('city'),key));
     if(url.pathname==='/api/route') {
       const parse=name=>{try{return JSON.parse(url.searchParams.get(name));}catch{throw new Error('올바른 좌표가 필요합니다.');}};
-      return reply(res,200,await directions(parse('start'),parse('end'),url.searchParams.get('mode'),routingKey));
+      const city=url.searchParams.get('city')||'hongkong';
+      const options={city,mode:url.searchParams.get('mode')||'walk',avoidSteps:url.searchParams.get('avoidSteps')==='true'};
+      if(url.searchParams.has('startNode'))Object.assign(options,{startNode:url.searchParams.get('startNode'),endNode:url.searchParams.get('endNode')});
+      else Object.assign(options,{start:parse('start'),end:parse('end')});
+      return reply(res,200,await localDirections(options));
     }
     if(url.pathname==='/api/buildings') {
       const city=url.searchParams.get('city');

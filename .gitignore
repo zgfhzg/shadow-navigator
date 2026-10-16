@@ -4,3 +4,5 @@ node_modules/
 !.env.example
 data/*.geojson
 .DS_Store
+data/*.osm.json
+data/*.graph.json

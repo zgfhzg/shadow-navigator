@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {coordinate,geocode,directions} from './providers.mjs';
+import {coordinate,geocode} from './providers.mjs';
 import {DepartureClock,localDeparture,arrivalLabel} from './dist/time.mjs';
 import {server} from './server.mjs';
 test('Hong Kong and Japan preserve instant across region and date changes',()=>{
@@ -11,15 +11,6 @@ test('Hong Kong and Japan preserve instant across region and date changes',()=>{
   assert.equal(arrivalLabel(now.getTime(),40,'Asia/Hong_Kong'),'10/15 00:10');
   assert.throws(()=>localDeparture('2026-03-08',150,'America/New_York'),RangeError);
   assert.equal(localDeparture('2026-11-01',90,'America/New_York').toISOString(),'2026-11-01T05:30:00.000Z');
-});
-test('routing adapter converts lon/lat and uses correct travel profiles',async()=>{
-  for(const [mode,profile] of [['walk','foot'],['bike','bike']]){
-    const result=await directions([114.15,22.28],[114.16,22.29],mode,'test',async url=>{
-      assert.deepEqual(url.searchParams.getAll('point'),['22.28,114.15','22.29,114.16']);assert.equal(url.searchParams.get('profile'),profile);assert.equal(url.searchParams.get('points_encoded'),'false');
-      return {ok:true,json:async()=>({paths:[{distance:100,time:120000,points:{type:'LineString',coordinates:[[114.15,22.28],[114.16,22.29]]}}]})};
-    });assert.equal(result[0].duration,2);
-  }
-  assert.throws(()=>coordinate([181,0]));await assert.rejects(()=>directions([0,0],[1,1],'car','test'));
 });
 test('geocoder handles Unicode and never leaks upstream key on error',async()=>{
   await geocode('東京駅','tokyo','secret',async url=>{assert(decodeURIComponent(url.pathname).includes('東京駅'));return {ok:true,json:async()=>({features:[]})};});

@@ -1,0 +1,40 @@
+{
+  "verifiedAt": "2026-10-16T01:09:32.314Z",
+  "source": {
+    "name": "OpenStreetMap",
+    "license": "ODbL-1.0",
+    "url": "https://www.openstreetmap.org/copyright",
+    "timestamp": null,
+    "downloadedAt": "2026-10-16T00:53:00Z"
+  },
+  "bounds": [
+    114.151,
+    22.278,
+    114.166,
+    22.286
+  ],
+  "audit": {
+    "ways": 2824,
+    "excludedWays": 2804,
+    "missingNodeWays": 0,
+    "ambiguousLevels": 3,
+    "verticalConnectors": 22,
+    "restrictions": 111
+  },
+  "nodeCount": 8502,
+  "directedEdgeCount": 18170,
+  "sample": {
+    "start": "3334802079@ground",
+    "end": "14205438441@ground",
+    "distance": 1241.266923878328,
+    "duration": 17.62170371740243,
+    "segments": 87,
+    "visited": 4466
+  },
+  "limitations": [
+    "시범 도로망: 현장 검증 전입니다.",
+    "층·레이어가 다른 길은 명시적인 층 이동 연결 없이 합치지 않습니다.",
+    "지역별 통행 기본값을 보수적으로 적용하며 자전거 끌기 이동은 아직 지원하지 않습니다.",
+    "건물 그늘·실시간 폐쇄·운영 시간·회전 제한은 아직 반영하지 않습니다."
+  ]
+}

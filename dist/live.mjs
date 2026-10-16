@@ -29,7 +29,7 @@ for(const [form,query,target] of [['places','start-query','start'],['destination
     try{const items=await api('/api/search',{q:$(query).value,city:$('city').value});if(cityVersion!==version||request!==searchVersion)return;
       for(const item of items){const option=new Option(item.name,JSON.stringify(item.center));$(target).append(option);}
       $('status').textContent=items.length?'검색 결과에서 장소를 선택해 주세요.':'검색 결과가 없습니다.';
-      $('route').disabled=!config.routingReady||!$('start').value||!$('end').value;
+      $('route').disabled=!map?.getSource('route')||!config.routingCities[$('city').value]||!$('start').value||!$('end').value;
     }catch(e){if(cityVersion===version&&request===searchVersion)$('status').textContent=e.message;}
   };
 }
@@ -38,11 +38,11 @@ for(const id of ['mode','start','end'])$(id).onchange=clearRoute;
 $('route').onclick=async()=>{
   const request=++routeVersion;const epoch=Date.now(),zone=clock.timeZone;
   $('status').textContent='경로를 찾고 있습니다…';$('results').replaceChildren();
-  try{const paths=await api('/api/route',{start:$('start').value,end:$('end').value,mode:$('mode').value});if(request!==routeVersion)return;
+  try{const paths=await api('/api/route',{city:$('city').value,start:$('start').value,end:$('end').value,mode:$('mode').value});if(request!==routeVersion)return;
     const draw=p=>{map.getSource('route').setData({type:'Feature',properties:{},geometry:p.geometry});const bounds=new maplibregl.LngLatBounds();p.geometry.coordinates.forEach(c=>bounds.extend(c));map.fitBounds(bounds,{padding:45,maxZoom:17});};
     paths.forEach((p,i)=>{const button=document.createElement('button');button.textContent=`경로 ${i+1} · ${Math.ceil(p.duration)}분 · ${(p.distance/1000).toFixed(1)}km · ${arrivalLabel(epoch,p.duration,zone)} 도착`;button.onclick=()=>draw(p);$('results').append(button);});draw(paths[0]);
     for(const marker of markers)marker.remove();markers=[$('start').value,$('end').value].map(value=>new maplibregl.Marker().setLngLat(JSON.parse(value)).addTo(map));
-    $('status').textContent='일반 경로입니다. 그늘 비율은 아직 계산하지 않습니다.';
+    $('status').textContent='자체 엔진의 시범 경로입니다. 그늘 비율은 아직 계산하지 않습니다.';
   }catch(e){if(request===routeVersion)$('status').textContent=e.message;}
 };
 try{
@@ -55,5 +55,5 @@ try{
   map.addControl(new maplibregl.NavigationControl());
   map.on('error',()=>{$('status').textContent='지도를 불러오지 못했습니다. MapTiler 키와 도메인 제한을 확인해 주세요.';});
   map.on('load',()=>{for(const id of ['buildings','route'])map.addSource(id,{type:'geojson',data:{type:'FeatureCollection',features:[]}});map.addLayer({id:'buildings',type:'fill',source:'buildings',paint:{'fill-color':'#77849b','fill-opacity':.35}});map.addLayer({id:'route',type:'line',source:'route',paint:{'line-color':'#3563f3','line-width':5}});cityChanged();});
-  $('status').textContent=config.routingReady?'출발지와 도착지를 검색해 주세요.':'지도 연결 완료 · GraphHopper API 키 설정 대기 중입니다.';
+  $('status').textContent=config.routingReady?'출발지와 도착지를 검색해 주세요.':'지도 연결 완료 · 이 도시의 도로 데이터 가져오기가 필요합니다.';
 }catch(e){$('status').textContent=e.message;}
