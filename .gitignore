@@ -10,3 +10,4 @@ data/*.graph.json
 data/*.parts.geojson
 data/*.geojson.state
 out/
+data/*.search.json

@@ -5,6 +5,9 @@ import {cities,geocode} from './providers.mjs';
 import {loadGraph,localDirections,network} from './routing/store.mjs';
 import {loadScene} from './routing/building-store.mjs';
 import {sampleGround} from './routing/shade.mjs';
+import {snapNode} from './routing/engine.mjs';
+import {regions} from './routing/regions.mjs';
+import {searchPlaces} from './routing/search.mjs';
 const root=new URL('./dist/',import.meta.url);
 const key=process.env.MAPTILER_KEY||'';
 const types={html:'text/html',mjs:'text/javascript',css:'text/css',json:'application/json'};
@@ -17,6 +20,16 @@ export const server=createServer(async(req,res)=>{
       const available={};for(const city of Object.keys(cities)){try{await loadGraph(city);available[city]=true;}catch{available[city]=false;}}
       return reply(res,200,{mapKey:key,routingReady:Object.values(available).some(Boolean),routingCities:available,routingEngine:'shadow',cities});
     }
+    if(url.pathname==='/api/regions') {
+      const available={};for(const city of Object.keys(regions)){try{await loadGraph(city);available[city]=true;}catch{available[city]=false;}}return reply(res,200,{regions,available});
+    }
+    if(url.pathname==='/api/places') {
+      const city=url.searchParams.get('city')||'hongkong';if(!Object.hasOwn(regions,city))return reply(res,400,{error:'지역을 선택해 주세요.'});
+      let index;try{index=JSON.parse(await readFile(new URL(`./fixtures/public/${city}.search.json`,import.meta.url),'utf8'));}catch{return reply(res,503,{error:'이 지역의 장소 정보를 준비 중입니다.'});}
+      return reply(res,200,searchPlaces(index,url.searchParams.get('q')||'',url.searchParams.get('mode')||'walk'));
+    }
+    if(url.pathname==='/api/area'){const graph=await loadGraph(url.searchParams.get('city')||'hongkong');return reply(res,200,{bounds:graph.data.bounds,source:graph.data.source});}
+    if(url.pathname==='/api/snap'){const graph=await loadGraph(url.searchParams.get('city')||'hongkong');return reply(res,200,snapNode(graph,JSON.parse(url.searchParams.get('point')),url.searchParams.get('mode')||'walk'));}
     if(url.pathname==='/api/network') return reply(res,200,await network(url.searchParams.get('city')));
     if(url.pathname==='/api/shade') {
       const city=url.searchParams.get('city')||'hongkong',raw=url.searchParams.get('departure');

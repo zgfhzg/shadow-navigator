@@ -1,0 +1,12 @@
+import {readFile,writeFile,mkdir,copyFile} from 'node:fs/promises';
+import assert from 'node:assert/strict';
+import {createScene} from '../routing/shade.mjs';
+const city=process.argv[2],root=new URL('../',import.meta.url);
+if(!['hongkong','tokyo','osaka','kyoto'].includes(city))throw new Error('지역을 선택해 주세요.');
+const raw=JSON.parse(await readFile(new URL(`data/${city}.geojson`,root),'utf8'));
+const buildings={...raw,shadow:{...raw.shadow,snapshot:'Geometry and model properties preserved; ancillary fields omitted for mobile transfer'},features:raw.features.map(f=>({type:'Feature',id:f.id,geometry:f.geometry,properties:Object.fromEntries(Object.entries(f.properties||{}).filter(([key])=>['height','min_height','min_floor','has_parts','is_underground','sources'].includes(key)).map(([key,value])=>[key,key==='sources'&&Array.isArray(value)?value.map(s=>({dataset:s.dataset,license:s.license,record_id:s.record_id})):value]))}))};
+assert.deepEqual(createScene(buildings).stats,createScene(raw).stats);
+await mkdir(new URL('fixtures/public/',root),{recursive:true});
+await writeFile(new URL(`fixtures/public/${city}.geojson`,root),JSON.stringify(buildings));
+for(const suffix of ['graph.json','search.json'])await copyFile(new URL(`data/${city}.${suffix}`,root),new URL(`fixtures/public/${city}.${suffix}`,root));
+console.log(`${city}: mobile snapshot prepared; geometry and height statistics match original`);

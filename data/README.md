@@ -19,7 +19,9 @@ npm run data:buildings -- 2026-09-23.1
 
 Overture v2 schema의 높이 정의에 따라 최고점을 `min_height + height`로 모델링합니다. 지형 고도가 없으므로 공통 평면을 가정합니다. 출처별 원본 높이의 품질이나 홍콩의 입체 보행망 완성도를 보장하지 않습니다.
 
-## 해외 확대
-도쿄·오사카·교토에는 아직 건물 데이터가 없습니다. 같은 도시 이름의 원본·부분 자료와 `.state`를 준비하면 전처리 도구를 재사용할 수 있습니다. 일본 PLATEAU와 홍콩의 공식 3D/지형 자료를 통한 보완은 아직 미연결입니다.
+## 일본 시범 구역
+도쿄역·마루노우치, 오사카 나카노시마, 교토 산조·시청의 실제 OSM 도로·장소와 같은 Overture 릴리스의 건물·부분 자료를 연결했습니다. 지역 전체가 아니라 지정된 시범 범위입니다. `npm run data:region -- tokyo` → `npm run index:region -- tokyo` → `npm run snapshot:region -- tokyo`로 준비합니다. 각 지역의 정확한 범위는 `routing/regions.mjs`에 있습니다. PLATEAU와 정밀 지형 자료는 아직 미연결입니다.
 
-출처·라이선스: [Overture / ODbL](https://docs.overturemaps.org/attribution/), [건물 스키마](https://docs.overturemaps.org/schema/reference/buildings/building/), [공식 CLI](https://docs.overturemaps.org/getting-data/overturemaps-py/), [OSM 도로](https://www.openstreetmap.org/copyright).
+공개 배포 스냅샷은 건물 형상·높이·출처를 유지하면서 부가 메타데이터를 줄입니다. 전처리 시 원본과 모델 통계가 일치하는지 검증하며, 통합 보고서는 `regions-verification.json`에 저장합니다.
+
+출처·라이선스: [Overture / ODbL](https://docs.overturemaps.org/attribution/), [OSM / ODbL](https://www.openstreetmap.org/copyright).

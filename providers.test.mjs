@@ -21,7 +21,7 @@ test('HTTP server serves static files, missing buildings and invalid routes safe
   await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));
   const base=`http://127.0.0.1:${server.address().port}`;
   try{
-    const page=await fetch(base+'/live.html');assert.equal(page.status,200);assert((await page.text()).includes('실제 지도'));
+    const page=await fetch(base+'/');assert.equal(page.status,200);assert((await page.text()).includes('출발지 검색'));
     assert.equal((await fetch(base+'/.env')).status,404);
     assert.equal((await fetch(base+'/api/buildings?city=unknown')).status,400);
     assert.equal((await fetch(base+'/api/route?start=invalid')).status,400);

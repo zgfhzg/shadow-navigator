@@ -1,0 +1,329 @@
+{
+  "verifiedAt": "2026-10-16T02:29:34.333Z",
+  "reports": [
+    {
+      "city": "hongkong",
+      "area": "센트럴",
+      "searchablePlaces": 1974,
+      "source": {
+        "name": "OpenStreetMap",
+        "license": "ODbL-1.0",
+        "url": "https://www.openstreetmap.org/copyright",
+        "timestamp": null,
+        "downloadedAt": "2026-10-16T00:53:00Z"
+      },
+      "start": "IFC 몰 · IFC Mall",
+      "end": "센트럴 마켓 · Central Market",
+      "buildingSource": {
+        "provider": "Overture Maps",
+        "release": "2026-09-23.1",
+        "downloadedAt": "2026-10-16T01:29:14.732662+00:00",
+        "partsDownloadedAt": "2026-10-16T01:33:12.508785+00:00",
+        "sha256": {
+          "buildings": "0112ef81c471b7fe7004ff700bcba26d0ef691778b7182be8d73de6561ce5f3f",
+          "parts": "e4dc5ae7a9d397c28740f4d4d7d071a7c9885a8e813cf72627ab08c48d1c0cf9"
+        },
+        "bounds": [
+          114.14,
+          22.27,
+          114.178,
+          22.294
+        ],
+        "license": "ODbL-1.0",
+        "attribution": "https://docs.overturemaps.org/attribution/",
+        "heightModel": "vertical extent: top = min_height + height",
+        "terrainModel": "common flat ground; elevation not supplied",
+        "snapshot": "Geometry and model properties preserved; ancillary fields omitted for mobile transfer"
+      },
+      "buildingStats": {
+        "features": 5213,
+        "polygons": 5201,
+        "knownHeight": 380,
+        "unknownHeight": 4820,
+        "invalidGeometry": 0,
+        "underground": 13
+      },
+      "routes": [
+        {
+          "kind": "fast",
+          "distance": 909.8546598860402,
+          "duration": 12.1313954651472,
+          "exposure": {
+            "sun": 0,
+            "shade": 4.0308294821754505,
+            "unknown": 8.100565982971753,
+            "night": 0,
+            "assessedFraction": 0.3322642884535247
+          }
+        },
+        {
+          "kind": "balanced",
+          "distance": 910.913568453431,
+          "duration": 12.145514246045746,
+          "exposure": {
+            "sun": 0,
+            "shade": 4.100697187890017,
+            "unknown": 8.044817058155731,
+            "night": 0,
+            "assessedFraction": 0.33763059388161304
+          }
+        },
+        {
+          "kind": "shade",
+          "distance": 916.9580217836804,
+          "duration": 12.226106957115736,
+          "exposure": {
+            "sun": 0,
+            "shade": 4.255146475983985,
+            "unknown": 7.970960481131752,
+            "night": 0,
+            "assessedFraction": 0.3480377270466656
+          }
+        }
+      ]
+    },
+    {
+      "city": "tokyo",
+      "area": "도쿄역 · 마루노우치",
+      "searchablePlaces": 1620,
+      "source": {
+        "name": "OpenStreetMap",
+        "license": "ODbL-1.0",
+        "url": "https://www.openstreetmap.org/copyright",
+        "timestamp": null,
+        "downloadedAt": "2026-10-16T02:18:50.347Z"
+      },
+      "start": "도쿄역 · Tokyo Station",
+      "end": "마루노우치 · Marunouchi",
+      "buildingSource": {
+        "provider": "Overture Maps",
+        "release": "2026-09-23.1",
+        "downloadedAt": "2026-10-16T02:18:55.373133+00:00",
+        "partsDownloadedAt": "2026-10-16T02:18:58.368450+00:00",
+        "sha256": {
+          "buildings": "6259327011128993d4eeaa6ad1c3ed3e6f77703ca04a23e8a300ce75cc0220f1",
+          "parts": "ebf534dc6d6c1910b25350bfc837435441393f869acd89850cdb831f7175b90e"
+        },
+        "bounds": [
+          139.75,
+          35.667,
+          139.783,
+          35.694
+        ],
+        "license": "ODbL-1.0",
+        "attribution": "https://docs.overturemaps.org/attribution/",
+        "heightModel": "vertical extent: top = min_height + height",
+        "terrainModel": "common flat ground; elevation not supplied",
+        "snapshot": "Geometry and model properties preserved; ancillary fields omitted for mobile transfer"
+      },
+      "buildingStats": {
+        "features": 12568,
+        "polygons": 12575,
+        "knownHeight": 295,
+        "unknownHeight": 12273,
+        "invalidGeometry": 0,
+        "underground": 0
+      },
+      "routes": [
+        {
+          "kind": "fast",
+          "distance": 266.7300466614998,
+          "duration": 3.55640062215333,
+          "exposure": {
+            "sun": 0.15526864975757948,
+            "shade": 1.2780462215433557,
+            "unknown": 2.1230857508523946,
+            "night": 0,
+            "assessedFraction": 0.40302401882752215
+          }
+        },
+        {
+          "kind": "balanced",
+          "distance": 266.7300466614998,
+          "duration": 3.55640062215333,
+          "exposure": {
+            "sun": 0.15526864975757948,
+            "shade": 1.2780462215433557,
+            "unknown": 2.1230857508523946,
+            "night": 0,
+            "assessedFraction": 0.40302401882752215
+          }
+        },
+        {
+          "kind": "shade",
+          "distance": 266.7300466614998,
+          "duration": 3.55640062215333,
+          "exposure": {
+            "sun": 0.15526864975757948,
+            "shade": 1.2780462215433557,
+            "unknown": 2.1230857508523946,
+            "night": 0,
+            "assessedFraction": 0.40302401882752215
+          }
+        }
+      ]
+    },
+    {
+      "city": "osaka",
+      "area": "나카노시마",
+      "searchablePlaces": 2624,
+      "source": {
+        "name": "OpenStreetMap",
+        "license": "ODbL-1.0",
+        "url": "https://www.openstreetmap.org/copyright",
+        "timestamp": null,
+        "downloadedAt": "2026-10-16T02:20:55.513Z"
+      },
+      "start": "기타하마 · Kitahama",
+      "end": "요도야바시 · Yodoyabashi",
+      "buildingSource": {
+        "provider": "Overture Maps",
+        "release": "2026-09-23.1",
+        "downloadedAt": "2026-10-16T02:21:00.139750+00:00",
+        "partsDownloadedAt": "2026-10-16T02:21:03.359361+00:00",
+        "sha256": {
+          "buildings": "60704eb8d20d950faa78b01f51f09ea330e41bebe53f671376b4020323e59295",
+          "parts": "7f54de8091dcfdda9a1b1357cad6b9eda62967a92934ca7049b37872de74c256"
+        },
+        "bounds": [
+          135.485,
+          34.679,
+          135.52,
+          34.708
+        ],
+        "license": "ODbL-1.0",
+        "attribution": "https://docs.overturemaps.org/attribution/",
+        "heightModel": "vertical extent: top = min_height + height",
+        "terrainModel": "common flat ground; elevation not supplied",
+        "snapshot": "Geometry and model properties preserved; ancillary fields omitted for mobile transfer"
+      },
+      "buildingStats": {
+        "features": 18177,
+        "polygons": 18181,
+        "knownHeight": 11363,
+        "unknownHeight": 6814,
+        "invalidGeometry": 0,
+        "underground": 0
+      },
+      "routes": [
+        {
+          "kind": "fast",
+          "distance": 526.1726387496055,
+          "duration": 7.015635183328072,
+          "exposure": {
+            "sun": 0,
+            "shade": 2.4312902249941843,
+            "unknown": 4.5843449583338876,
+            "night": 0,
+            "assessedFraction": 0.34655311478736706
+          }
+        },
+        {
+          "kind": "balanced",
+          "distance": 526.1726387496055,
+          "duration": 7.015635183328072,
+          "exposure": {
+            "sun": 0,
+            "shade": 2.4312902249941843,
+            "unknown": 4.5843449583338876,
+            "night": 0,
+            "assessedFraction": 0.34655311478736706
+          }
+        },
+        {
+          "kind": "shade",
+          "distance": 543.3348530093638,
+          "duration": 7.244464706791517,
+          "exposure": {
+            "sun": 0,
+            "shade": 2.7539903418962233,
+            "unknown": 4.490474364895292,
+            "night": 0,
+            "assessedFraction": 0.3801509777961126
+          }
+        }
+      ]
+    },
+    {
+      "city": "kyoto",
+      "area": "산조 · 시청",
+      "searchablePlaces": 1247,
+      "source": {
+        "name": "OpenStreetMap",
+        "license": "ODbL-1.0",
+        "url": "https://www.openstreetmap.org/copyright",
+        "timestamp": null,
+        "downloadedAt": "2026-10-16T02:22:08.346Z"
+      },
+      "start": "교토 시청 · Kyoto City Hall",
+      "end": "’elua",
+      "buildingSource": {
+        "provider": "Overture Maps",
+        "release": "2026-09-23.1",
+        "downloadedAt": "2026-10-16T02:22:13.647248+00:00",
+        "partsDownloadedAt": "2026-10-16T02:22:16.898481+00:00",
+        "sha256": {
+          "buildings": "36b435e8eac52bfb9bf388ee16e97e9fd437adb5263fb06f76d17fe745d68fbe",
+          "parts": "d0fc0e9b9418184caeca4bd3b3ecbde139b4a8c67e3c1d37a66ca9e0e1411d1b"
+        },
+        "bounds": [
+          135.754,
+          34.996,
+          135.782,
+          35.022
+        ],
+        "license": "ODbL-1.0",
+        "attribution": "https://docs.overturemaps.org/attribution/",
+        "heightModel": "vertical extent: top = min_height + height",
+        "terrainModel": "common flat ground; elevation not supplied",
+        "snapshot": "Geometry and model properties preserved; ancillary fields omitted for mobile transfer"
+      },
+      "buildingStats": {
+        "features": 32625,
+        "polygons": 32628,
+        "knownHeight": 67,
+        "unknownHeight": 32558,
+        "invalidGeometry": 0,
+        "underground": 0
+      },
+      "routes": [
+        {
+          "kind": "fast",
+          "distance": 317.82252748658027,
+          "duration": 4.23763369982107,
+          "exposure": {
+            "sun": 0,
+            "shade": 0,
+            "unknown": 4.23763369982107,
+            "night": 0,
+            "assessedFraction": 0
+          }
+        },
+        {
+          "kind": "balanced",
+          "distance": 317.82252748658027,
+          "duration": 4.23763369982107,
+          "exposure": {
+            "sun": 0,
+            "shade": 0,
+            "unknown": 4.23763369982107,
+            "night": 0,
+            "assessedFraction": 0
+          }
+        },
+        {
+          "kind": "shade",
+          "distance": 317.82252748658027,
+          "duration": 4.23763369982107,
+          "exposure": {
+            "sun": 0,
+            "shade": 0,
+            "unknown": 4.23763369982107,
+            "night": 0,
+            "assessedFraction": 0
+          }
+        }
+      ]
+    }
+  ]
+}

@@ -12,6 +12,13 @@
     "prepare:buildings": "node scripts/prepare-buildings.mjs",
     "verify:shade": "node scripts/verify-shade.mjs",
     "build": "node scripts/build-public.mjs",
-    "preview:public": "python3 -m http.server 4174 --directory out"
+    "preview:public": "python3 -m http.server 4174 --directory out",
+    "verify:regions": "node scripts/verify-regions.mjs",
+    "data:region": "node scripts/prepare-region.mjs",
+    "index:region": "node scripts/build-search.mjs",
+    "snapshot:region": "node scripts/snapshot-region.mjs"
+  },
+  "dependencies": {
+    "leaflet": "^1.9.4"
   }
 }
