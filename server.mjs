@@ -8,6 +8,8 @@ import {sampleGround} from './routing/shade.mjs';
 import {snapNode} from './routing/engine.mjs';
 import {regions} from './routing/regions.mjs';
 import {searchPlaces} from './routing/search.mjs';
+import {createCountryRuntime} from './routing/country-runtime.mjs';
+const countryRuntime=createCountryRuntime(new URL('./fixtures/public/hongkong-country/',import.meta.url),async url=>{try{const bytes=await readFile(url);return {ok:true,json:async()=>JSON.parse(bytes.toString()),arrayBuffer:async()=>bytes.buffer.slice(bytes.byteOffset,bytes.byteOffset+bytes.byteLength)};}catch{return {ok:false};}});
 const root=new URL('./dist/',import.meta.url);
 const key=process.env.MAPTILER_KEY||'';
 const types={html:'text/html',mjs:'text/javascript',css:'text/css',json:'application/json'};
@@ -21,6 +23,7 @@ export const server=createServer(async(req,res)=>{
       const available={};for(const city of Object.keys(cities)){try{await loadGraph(city);available[city]=true;}catch{available[city]=false;}}
       return reply(res,200,{mapKey:key,routingReady:Object.values(available).some(Boolean),routingCities:available,routingEngine:'shadow',cities});
     }
+    if(url.searchParams.get('city')==='hongkong'&&url.searchParams.get('coverage')==='country'&&['/api/area','/api/snap','/api/places','/api/network','/api/shade','/api/route'].includes(url.pathname))return reply(res,200,await countryRuntime.operation(url.pathname,Object.fromEntries(url.searchParams)));
     if(url.pathname==='/api/regions') {
       const available={};for(const city of Object.keys(regions)){try{await loadGraph(city);available[city]=true;}catch{available[city]=false;}}return reply(res,200,{regions,available});
     }

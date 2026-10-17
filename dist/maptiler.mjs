@@ -7,6 +7,11 @@ export function cleanConfig(value={}){
 export async function readMapConfig(fetcher=fetch){
  try{const response=await fetcher(new URL('./map-config.json',import.meta.url),{cache:'no-store'});return response.ok?cleanConfig(await response.json()):cleanConfig();}catch{return cleanConfig();}
 }
+export async function mapAvailable(config,fetcher=fetch){
+ const {mapKey,mapStyle}=cleanConfig(config);if(!mapKey)return false;
+ const url=new URL(`https://api.maptiler.com/maps/${mapStyle}/256/tiles.json`);url.searchParams.set('key',mapKey);
+ try{const response=await fetcher(url,{signal:AbortSignal.timeout(8000)});if(!response.ok)return false;const data=await response.json();return Array.isArray(data.tiles)&&data.tiles.length>0;}catch{return false;}
+}
 export function tileOptions(config){
  const {mapKey,mapStyle}=cleanConfig(config);
  return mapKey?{url:`https://api.maptiler.com/maps/${mapStyle}/256/{z}/{x}/{y}.png?key=${encodeURIComponent(mapKey)}`,maxZoom:19,crossOrigin:true,attribution:'<a href="https://www.maptiler.com/copyright/">© MapTiler</a> · <a href="https://www.openstreetmap.org/copyright">© OpenStreetMap contributors</a>'}:{url:'https://tile.openstreetmap.org/{z}/{x}/{y}.png',maxZoom:19,attribution:'© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap contributors</a>'};

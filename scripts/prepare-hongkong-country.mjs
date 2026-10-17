@@ -1,0 +1,4 @@
+import {spawnSync} from 'node:child_process';import {fileURLToPath} from 'node:url';
+const root=fileURLToPath(new URL('../',import.meta.url));
+const commands=[['curl','--fail','--location','--output','data/hong-kong-latest.osm.pbf','https://download.geofabrik.de/asia/china/hong-kong-latest.osm.pbf'],['curl','--fail','--location','--output','data/hong-kong.poly','https://download.geofabrik.de/asia/china/hong-kong.poly'],['.tools/overture/bin/python','scripts/read-hongkong-pbf.py'],[process.execPath,'--max-old-space-size=6144','scripts/build-hongkong-country.mjs'],[process.execPath,'scripts/download-hongkong-government.mjs'],[process.execPath,'--max-old-space-size=4096','scripts/tile-hongkong-buildings.mjs']];
+for(const [command,...args]of commands){const result=spawnSync(command,args,{cwd:root,stdio:'inherit'});if(result.status!==0)process.exit(result.status||1);}

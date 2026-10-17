@@ -12,8 +12,8 @@ export async function api(path,params={}){
   }
   if(!worker){
     worker=new Worker(new URL('./runtime/routing/browser-worker.mjs',import.meta.url),{type:'module'});
-    worker.onmessage=event=>{const job=pending.get(event.data.id);if(!job)return;clearTimeout(job.timer);pending.delete(event.data.id);event.data.error?job.reject(new Error(event.data.error)):job.resolve(event.data.result);};
+    worker.onmessage=event=>{const job=pending.get(event.data.id);if(!job)return;if(event.data.progress){if(job.path==='/api/route')window.dispatchEvent(new CustomEvent('routing-progress',{detail:event.data.progress}));return;}clearTimeout(job.timer);pending.delete(event.data.id);event.data.error?job.reject(new Error(event.data.error)):job.resolve(event.data.result);};
     worker.onerror=()=>{for(const job of pending.values()){clearTimeout(job.timer);job.reject(new Error('경로 계산을 시작하지 못했습니다. 새로고침 후 다시 시도해 주세요.'));}pending.clear();worker.terminate();worker=undefined;};
   }
-  return new Promise((resolve,reject)=>{const id=++serial,timer=setTimeout(()=>{pending.delete(id);reject(new Error('계산 시간이 초과되었습니다. 다시 시도해 주세요.'));},45000);pending.set(id,{resolve,reject,timer});worker.postMessage({id,path,params});});
+  return new Promise((resolve,reject)=>{const id=++serial,timer=setTimeout(()=>{pending.delete(id);reject(new Error('계산 시간이 초과되었습니다. 다시 시도해 주세요.'));},path==='/api/route'?180000:60000);pending.set(id,{resolve,reject,timer,path});worker.postMessage({id,path,params});});
 }

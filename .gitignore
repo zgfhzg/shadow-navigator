@@ -11,3 +11,10 @@ data/*.parts.geojson
 data/*.geojson.state
 out/
 data/*.search.json
+
+data/*.pbf
+data/hk-government-pages/
+data/*.poly
+build/
+fixtures/public/hongkong-country/buildings/
+fixtures/public/hongkong-country/**/* *

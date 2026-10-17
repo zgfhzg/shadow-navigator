@@ -7,6 +7,7 @@ function access(tags,mode,highway) {
   if(Object.keys(tags).some(k=>k.endsWith(':conditional')))return false;
   const explicit=tags[mode==='walk'?'foot':'bicycle'];
   if(explicit!==undefined)return publicAccess.has(explicit);
+  if(tags.motorroad==='yes')return false; // no guessed non-motorised access
   if(tags.access!==undefined&&!publicAccess.has(tags.access))return false;
   if(mode==='walk')return walking.has(highway);
   // Hong Kong defaults are conservative: pedestrian paths require explicit bicycle permission.
@@ -19,7 +20,7 @@ function context(tags) {
   if(tags.tunnel&&tags.tunnel!=='no')return ['tunnel:unknown'];
   return ['ground'];
 }
-export function importOSM(osm,{city='hongkong',bounds=null}={}) {
+export function importOSM(osm,{city='hongkong',bounds=null,connectStructuralEndpoints=false}={}) {
   if(!Array.isArray(osm?.elements)||osm.remark)throw new Error('OSM 응답이 불완전하거나 올바르지 않습니다.');
   const rawNodes=new Map(osm.elements.filter(e=>e.type==='node').map(n=>[n.id,n]));
   const nodes=new Map(),edges=[],audit={ways:0,excludedWays:0,missingNodeWays:0,ambiguousLevels:0,verticalConnectors:0,restrictions:osm.elements.filter(e=>e.type==='relation'&&e.tags?.type==='restriction').length};
@@ -64,6 +65,26 @@ export function importOSM(osm,{city='hongkong',bounds=null}={}) {
       add(node(way.nodes[i-1],fromLevel),node(way.nodes[i],toLevel),way,t,nodeAllowed,kind);
     }
     if(vertical&&levels.length===2)audit.verticalConnectors++;audit.ways++;
+  }
+  // layer describes grade separation, not a storey. Shared OSM nodes at the
+  // actual ends of a bridge/tunnel connect to its ground approach. Never merge
+  // geometric crossings, bridge midpoints, explicit floors or private paths.
+  if(connectStructuralEndpoints){
+    const incident=new Map();for(const e of edges)for(const id of [e.from,e.to]){if(!incident.has(id))incident.set(id,new Set());for(const m of e.modes)incident.get(id).add(m);}
+    const connected=new Set();audit.structuralConnections=0;
+    for(const way of osm.elements.filter(e=>e.type==='way')){const t=way.tags||{};
+      if(t.level!==undefined||!((t.bridge&&t.bridge!=='no')||(t.tunnel&&t.tunnel!=='no'))||!way.nodes?.length)continue;
+      const contexts=context(t);if(contexts.length!==1||contexts[0]==='ground'||contexts[0]==='invalid')continue;
+      for(const rawId of [way.nodes[0],way.nodes.at(-1)]){
+        if(rawNodes.get(rawId)?.tags?.level!==undefined)continue;
+        const elevated=`${rawId}@${contexts[0]}`,ground=`${rawId}@ground`,key=elevated+'|'+ground;
+        if(connected.has(key)||!nodes.has(elevated)||!nodes.has(ground))continue;
+        const modes=['walk','bike'].filter(m=>incident.get(elevated)?.has(m)&&incident.get(ground)?.has(m));if(!modes.length)continue;
+        // Restrict the junction to modes already admitted by both adjoining ways.
+        for(const [from,to]of [[ground,elevated],[elevated,ground]])edges.push({id:`structural:${edges.length}`,from,to,wayId:way.id,name:'',kind:'bridge',covered:false,distance:0,modes});
+        connected.add(key);audit.structuralConnections++;
+      }
+    }
   }
   // A lift may be represented by one OSM node on multiple floors.
   for(const raw of rawNodes.values())if(raw.tags?.highway==='elevator'){

@@ -1,0 +1,2 @@
+-r requirements-buildings.txt
+osmium==4.3.1

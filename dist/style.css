@@ -21,3 +21,5 @@
 @media(max-width:360px){.gps-status{bottom:335px}.legend{bottom:293px}.map-actions{top:150px}}
 
 @media(max-width:760px){.map-panel{height:760px;min-height:760px}.map-actions{max-width:calc(100% - 35px)}.map-actions button{padding:9px}.map-actions #start-here{flex-basis:auto}}
+
+.legend small[hidden]{display:none}

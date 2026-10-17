@@ -3,6 +3,8 @@ import {createScene,sampleGround} from './shade.mjs';
 import {solveDirections,graphNetwork} from './service.mjs';
 import {searchPlaces} from './search.mjs';
 import {regions} from './regions.mjs';
+import {createCountryRuntime} from './country-runtime.mjs';
+const countryRuntimes=new WeakMap();
 const loaded=new Map(),indexes=new Map();
 async function loadIndex(city,fetcher){
  if(!Object.hasOwn(regions,city))throw new Error('지원하는 지역을 선택해 주세요.');
@@ -16,7 +18,8 @@ async function loadRegion(city,fetcher){
   }).concat(loadIndex(city,fetcher))).then(([graph,buildings,index])=>({graph:prepareGraph(graph),scene:createScene(buildings),index})).catch(error=>{loaded.delete(city);throw error;}));
   return loaded.get(city);
 }
-export async function runOperation(path,params={},fetcher=fetch){
+export async function runOperation(path,params={},fetcher=fetch,progress){
+  if(params.city==='hongkong'&&params.coverage==='country'){if(!countryRuntimes.has(fetcher))countryRuntimes.set(fetcher,createCountryRuntime(new URL('../data/hongkong-country/',import.meta.url),fetcher));return countryRuntimes.get(fetcher).operation(path,params,progress);}
   if(path==='/api/regions'){const response=await fetcher(new URL('../data/catalog.json',import.meta.url));if(!response.ok)throw new Error('지역 정보를 불러오지 못했습니다.');return response.json();}
   const city=params.city||'hongkong';
   if(path==='/api/places')return searchPlaces(await loadIndex(city,fetcher),params.q||'',params.mode||'walk');
@@ -30,5 +33,5 @@ export async function runOperation(path,params={},fetcher=fetch){
 }
 if(typeof self!=='undefined'&&typeof self.postMessage==='function')self.onmessage=async event=>{
   const {id,path,params}=event.data;
-  try{self.postMessage({id,result:await runOperation(path,params)});}catch(error){self.postMessage({id,error:error.message});}
+  try{self.postMessage({id,result:await runOperation(path,params,fetch,message=>self.postMessage({id,progress:message}))});}catch(error){self.postMessage({id,error:error.message});}
 };

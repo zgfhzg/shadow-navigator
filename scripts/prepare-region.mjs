@@ -5,6 +5,7 @@ import {regions} from '../routing/regions.mjs';
 import {importOSM} from '../routing/osm.mjs';
 import {prepareGraph} from '../routing/engine.mjs';
 const city=process.argv[2];if(!Object.hasOwn(regions,city))throw new Error('지역을 선택해 주세요.');
+if(city==='hongkong')throw new Error('홍콩 전역 자료는 npm run data:hongkong 으로 준비하세요. OSM 지도 편집 API에서 국가 전체를 요청하지 않습니다.');
 const region=regions[city],root=new URL('../',import.meta.url);await mkdir(new URL('data/',root),{recursive:true});
 const response=await fetch(`https://api.openstreetmap.org/api/0.6/map.json?bbox=${region.bounds.join(',')}`,{headers:{'User-Agent':'ShadowNavigator/0.1 (https://github.com/zgfhzg/shadow-navigator; development data import)'},signal:AbortSignal.timeout(55000)});
 if(!response.ok)throw new Error(`도로 자료 다운로드 실패 ${response.status}; retry-after=${response.headers.get('retry-after')||'not supplied'}; ${(await response.text()).slice(0,250)}`);

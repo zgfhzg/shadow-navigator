@@ -45,8 +45,10 @@ export function createScene(collection){
       for(let x=Math.floor(box[0]/CELL);x<=Math.floor(box[2]/CELL);x++)for(let y=Math.floor(box[1]/CELL);y<=Math.floor(box[3]/CELL);y++){const key=`${x},${y}`;if(!grid.has(key))grid.set(key,[]);grid.get(key).push(index);}
     }
   }
+  const coverage=collection.shadow?.coverageTiles?new Set(collection.shadow.coverageTiles):null,step=collection.shadow?.tileStep;
+  const coversRay=(a,b)=>{const polygons=collection.shadow?.coveragePolygons;if(polygons&&!polygons.some(rings=>{if(!inPolygon(a,rings)||!inPolygon(b,rings))return false;const d=[b[0]-a[0],b[1]-a[1]];for(const ring of rings)for(let i=1;i<ring.length;i++){const c=ring[i-1],e=ring[i],s=[e[0]-c[0],e[1]-c[1]],delta=[c[0]-a[0],c[1]-a[1]],den=cross(d,s);if(Math.abs(den)<1e-16)continue;const t=cross(delta,s)/den,u=cross(delta,d)/den;if(t>1e-9&&t<1-1e-9&&u>=0&&u<=1)return false;}return true;}))return false;if(!coverage)return true;if(!Number.isFinite(step)||step<=0)return false;for(let x=Math.floor(Math.min(a[0],b[0])/step);x<=Math.floor(Math.max(a[0],b[0])/step);x++)for(let y=Math.floor(Math.min(a[1],b[1])/step);y<=Math.floor(Math.max(a[1],b[1])/step);y++)if(!coverage.has(`${x},${y}`))return false;return true;};
   const solarCache=new Map();
-  const scene={bounds,project,unproject,grid,parts,stats,maxHeight,latitude,longitude,source:collection.shadow};
+  const scene={bounds,project,unproject,grid,parts,stats,maxHeight,latitude,longitude,coversRay,source:collection.shadow};
   scene.sun=epoch=>{const minute=Math.floor(epoch/60000);if(!solarCache.has(minute)){if(solarCache.size>300)solarCache.clear();solarCache.set(minute,solarAt(minute*60000,{latitude,longitude}));}return solarCache.get(minute);};
   return scene;
 }
@@ -59,7 +61,7 @@ export function classifyPoint(scene,coordinate,epoch,{height=0,solar}={}){
   const sun=solar||scene.sun(epoch);if(sun.up<=0)return 'night';
   if(!Number.isFinite(height)||height<0)return 'unknown';
   const point=scene.project(coordinate),horizontal=Math.hypot(sun.east,sun.north);
-  if(horizontal<1e-8){let uncertain=Boolean(scene.stats.invalidGeometry);for(const b of candidates(scene,point,point))if(inPolygon(point,b.rings)){if(b.top!==null&&b.top>height)return 'shade';if(b.top===null)uncertain=true;}const [w,s,e,n]=scene.bounds;return uncertain||coordinate[0]<w||coordinate[0]>e||coordinate[1]<s||coordinate[1]>n?'unknown':'sun';}
+  if(horizontal<1e-8){let uncertain=Boolean(scene.stats.invalidGeometry);for(const b of candidates(scene,point,point))if(inPolygon(point,b.rings)){if(b.top!==null&&b.top>height)return 'shade';if(b.top===null)uncertain=true;}const [w,s,e,n]=scene.bounds;return uncertain||!scene.coversRay(coordinate,coordinate)||coordinate[0]<w||coordinate[0]>e||coordinate[1]<s||coordinate[1]>n?'unknown':'sun';}
   const direction=[sun.east/horizontal,sun.north/horizontal],slope=sun.up/horizontal;
   const end=[point[0]+direction[0]*MAX_RAY,point[1]+direction[1]*MAX_RAY];
   let uncertain=false;
@@ -70,7 +72,7 @@ export function classifyPoint(scene,coordinate,epoch,{height=0,solar}={}){
     for(const [near,far]of intervals){const low=Math.max(near,(building.base-height)/slope,0),high=Math.min(far,(building.top-height)/slope);if(high-low>1e-6)return 'shade';}
   }
   const [west,south,east,north]=scene.bounds,endCoord=scene.unproject(end);
-  if(coordinate[0]<west||coordinate[0]>east||coordinate[1]<south||coordinate[1]>north||endCoord[0]<west||endCoord[0]>east||endCoord[1]<south||endCoord[1]>north||scene.stats.invalidGeometry||scene.maxHeight/slope>MAX_RAY||sun.altitude<2)uncertain=true;
+  if(!scene.coversRay(coordinate,endCoord)||coordinate[0]<west||coordinate[0]>east||coordinate[1]<south||coordinate[1]>north||endCoord[0]<west||endCoord[0]>east||endCoord[1]<south||endCoord[1]>north||scene.stats.invalidGeometry||scene.maxHeight/slope>MAX_RAY||sun.altitude<2)uncertain=true;
   return uncertain?'unknown':'sun';
 }
 export function edgeExposure(scene,graph,edge,epoch,mode='walk'){

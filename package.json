@@ -6,17 +6,18 @@
     "dev": "node --env-file-if-exists=.env server.mjs",
     "test": "node --test *.test.mjs",
     "import:osm": "node scripts/import-osm.mjs",
-    "data:hongkong": "node scripts/download-hongkong.mjs",
+    "data:hongkong": "node scripts/prepare-hongkong-country.mjs",
     "verify:hongkong": "node scripts/verify-hongkong.mjs",
     "data:buildings": "node scripts/download-buildings.mjs",
     "prepare:buildings": "node scripts/prepare-buildings.mjs",
     "verify:shade": "node scripts/verify-shade.mjs",
     "build": "node scripts/build-public.mjs",
-    "preview:public": "python3 -m http.server 4174 --directory out",
+    "preview:public": "python3 -m http.server 4174 --directory build",
     "verify:regions": "node scripts/verify-regions.mjs",
     "data:region": "node scripts/prepare-region.mjs",
     "index:region": "node scripts/build-search.mjs",
-    "snapshot:region": "node scripts/snapshot-region.mjs"
+    "snapshot:region": "node scripts/snapshot-region.mjs",
+    "verify:country": "node scripts/verify-hongkong-country.mjs"
   },
   "dependencies": {
     "leaflet": "^1.9.4"

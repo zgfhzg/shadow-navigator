@@ -11,5 +11,7 @@ test('map selection resolves real supported bounds and rejects unsupported place
  assert.equal(regionAt([135.5,34.69],'hongkong'),undefined);
  assert.equal(regionAt([130.4,33.59],'japan'),undefined);
  assert.equal(regionAt(regions.tokyo.center,'japan',{tokyo:false}),undefined);
- assert.equal(regionAt([114.1661,22.282],'hongkong'),undefined);
+ assert.equal(regionAt([114.1661,22.282],'hongkong'),'hongkong');
+ assert.equal(regionAt([113.975,22.395],'hongkong'),'hongkong');
+ assert.equal(regionAt([114.6,22.4],'hongkong'),undefined);
 });

@@ -33,7 +33,7 @@ test('lift node connects explicit floors while snapping remains on ground',()=>{
   assert.equal(snapNode(g,[114.001,22]).id,'2@ground');assert.throws(()=>snapNode(g,[120,30]),/50m/);
 });
 test('private access, barriers and conditional access cannot become shortcuts',()=>{
-  for(const tags of [{access:'private'},{foot:'no'},{'access:conditional':'yes @ (09:00-17:00)'},{highway:'steps',conveying:'forward'}]){
+  for(const tags of [{motorroad:'yes'},{access:'private'},{foot:'no'},{'access:conditional':'yes @ (09:00-17:00)'},{highway:'steps',conveying:'forward'}]){
     const g=graph(node(1,0,0),node(2,1,0),way(10,[1,2],tags));assert.equal(g.data.edges.length,0);
   }
   const g=graph(node(1,0,0),node(2,1,0,{barrier:'gate',access:'private'}),node(3,2,0),way(10,[1,2,3]));assert.equal(g.data.edges.length,0);
@@ -66,4 +66,12 @@ test('unordered level lists use endpoint connections rather than inventing direc
   const g=graph(node(1,0,0),node(2,1,0),node(3,1,0),node(4,2,0),way(10,[1,2],{level:'1'}),way(11,[3,4],{level:'0'}),way(12,[2,3],{highway:'steps',level:'0;1'}));
   const r=route(g,'1@floor:1','4@ground');assert(r.duration>=.35);assert(r.segments.some(e=>e.from==='2@floor:1'&&e.to==='3@ground'));
   const unknown=graph(node(2,1,0),node(3,1,0),way(12,[2,3],{highway:'steps',level:'0;1'}));assert.equal(unknown.data.edges.length,0);assert.equal(unknown.data.audit.ambiguousLevels,1);
+});
+
+test('structural endpoints connect shared OSM bridge approaches without inventing floor or crossing links',()=>{
+ const elements=[node(1,0,0),node(2,1,0),node(3,2,0),node(4,3,0),node(5,2,1),way(10,[1,2]),way(11,[2,3],{bridge:'yes',layer:'1'}),way(12,[3,4]),way(13,[3,5],{level:'1',indoor:'yes'})];
+ const g=prepareGraph(importOSM({elements},{connectStructuralEndpoints:true}));
+ assert(route(g,'1@ground','4@ground').segments.some(e=>e.kind==='bridge'));assert.equal(g.data.audit.structuralConnections,2);
+ assert.throws(()=>route(g,'1@ground','5@floor:1'),/연결된 경로/);
+ const crossing=prepareGraph(importOSM({elements:[node(1,0,0),node(2,2,0),node(3,1,-1),node(4,1,1),way(10,[1,2]),way(11,[3,4],{bridge:'yes',layer:'1'})]},{connectStructuralEndpoints:true}));assert.throws(()=>route(crossing,'1@ground','4@layer:1'),/연결된 경로/);
 });

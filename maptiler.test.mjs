@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {cleanConfig,readMapConfig,tileOptions,searchMapTiler,connectPlace} from './dist/maptiler.mjs';
+import {cleanConfig,readMapConfig,mapAvailable,tileOptions,searchMapTiler,connectPlace} from './dist/maptiler.mjs';
 import {regions} from './dist/regions.mjs';
 test('MapTiler config supports keyless fallback and rejects invalid injected config',async()=>{
  assert.equal(tileOptions({}).url,'https://tile.openstreetmap.org/{z}/{x}/{y}.png');
@@ -38,4 +38,11 @@ test('inside-coverage places use real snapped nodes and preserve the original pl
  const result=await connectPlace({label:'Tokyo Station',coordinate},{country:'japan',available:{tokyo:true},mode:'bike',snap:async(city,point,mode)=>{assert.equal(city,'tokyo');assert.equal(mode,'bike');assert.deepEqual(point,coordinate);return {id:'actual-node@ground',coordinate:[139.7672,35.6813],distance:15};}});
  assert.equal(result.nodeId,'actual-node@ground');assert.equal(result.supported,true);assert.deepEqual(result.placeCoordinate,coordinate);assert.notDeepEqual(result.coordinate,coordinate);
  const failed=await connectPlace({coordinate},{country:'japan',available:{tokyo:true},mode:'walk',snap:async()=>{throw new Error('no nearby path');}});assert.equal(failed.nodeId,null);assert.equal(failed.supported,false);
+});
+
+test('map metadata preflight avoids showing provider invalid-key placeholder tiles',async()=>{
+ assert.equal(await mapAvailable({},()=>{throw new Error('no request without key');}),false);
+ assert.equal(await mapAvailable({mapKey:'test-key'},async()=>({ok:false,status:403})),false);
+ assert.equal(await mapAvailable({mapKey:'test-key'},async()=>({ok:true,json:async()=>({error:'denied'})})),false);
+ assert.equal(await mapAvailable({mapKey:'test-key'},async url=>{assert(url.pathname.endsWith('/256/tiles.json'));return {ok:true,json:async()=>({tiles:['https://api.maptiler.com/example']})};}),true);
 });
