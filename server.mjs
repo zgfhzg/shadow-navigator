@@ -16,6 +16,7 @@ export const server=createServer(async(req,res)=>{
   try {
     const url=new URL(req.url,'http://localhost');
     if(req.method!=='GET') return reply(res,405,{error:'GET 요청만 지원합니다.'});
+    if(url.pathname==='/map-config.json')return reply(res,200,{mapKey:key,mapStyle:process.env.MAPTILER_STYLE||'streets-v4'});
     if(url.pathname==='/api/config') {
       const available={};for(const city of Object.keys(cities)){try{await loadGraph(city);available[city]=true;}catch{available[city]=false;}}
       return reply(res,200,{mapKey:key,routingReady:Object.values(available).some(Boolean),routingCities:available,routingEngine:'shadow',cities});

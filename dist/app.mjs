@@ -3,19 +3,26 @@ import {api} from './browser-client.mjs';
 import {regions,countries,regionAt} from './regions.mjs';
 import {DepartureClock,clockLabel,arrivalLabel} from './time.mjs';
 import {solarAt} from './engine.mjs';
+import {readMapConfig,tileOptions,searchMapTiler,connectPlace} from './maptiler.mjs';
+const mapConfig=await readMapConfig();
 const $=id=>document.getElementById(id);
 const clock=new DepartureClock(new Date(),regions.hongkong.zone);
 const state={country:'hongkong',city:'hongkong',user:null,pick:null,mode:'walk',kind:'shade',ready:false,available:{},area:null,origin:null,destination:null,routes:[],showShade:true};
 let regionVersion=0,routeVersion=0,shadeVersion=0,timeTimer,timeRecalcWanted=false;
 const map=L.map('map',{zoomControl:false,preferCanvas:true,attributionControl:true}).setView([22.2819,114.1589],16);
 map.attributionControl.setPrefix(false);
-const tiles=L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap contributors</a>',keepBuffer:1}).addTo(map);
+const baseOptions=tileOptions(mapConfig);
+let tiles=L.tileLayer(baseOptions.url,{...baseOptions,keepBuffer:1}).addTo(map);
 map.on('moveend',()=>{const c=map.getCenter(),city=regionAt([c.lng,c.lat],state.country,state.available);$('area-name').textContent=city?`${regions[city].name} · ${regions[city].area}`:countries[state.country].name+' 지도';});
 const routeLayer=L.layerGroup().addTo(map),pinLayer=L.layerGroup().addTo(map),shadeLayer=L.layerGroup().addTo(map),fallbackLayer=L.layerGroup().addTo(map);
 const userLayer=L.layerGroup().addTo(map),coverageLayer=L.layerGroup().addTo(map);
 let watchId=null,userMarker=null,userAccuracy=null;
 let tileFailure=false;
-tiles.on('tileerror',()=>{if(tileFailure)return;tileFailure=true;showRoadFallback();});
+tiles.on('tileerror',()=>{
+ if(tileFailure)return;tileFailure=true;
+ if(mapConfig.mapKey){map.removeLayer(tiles);const fallback=tileOptions({});tiles=L.tileLayer(fallback.url,{...fallback,keepBuffer:1}).addTo(map);tiles.on('tileerror',showRoadFallback);$('map-provider').textContent='기본 지도 · MapTiler 검색';$('location-status').textContent='MapTiler 지도를 불러오지 못해 기본 지도로 표시합니다. 키·허용 도메인·사용량을 확인해 주세요.';}
+ else showRoadFallback();
+});
 async function showRoadFallback(){const city=state.city,version=regionVersion;try{const network=await api('/api/network',{city});if(version!==regionVersion)return;fallbackLayer.clearLayers();L.geoJSON(network.roads,{style:{color:'#b3bfd2',weight:1.5,opacity:.7}}).addTo(fallbackLayer);$('location-status').textContent='배경 지도를 연결하지 못해 실제 도로 형상으로 표시합니다.';}catch{}}
 const marker=(place,text)=>{const p=L.marker([place.coordinate[1],place.coordinate[0]],{icon:L.divIcon({className:'map-pin '+(text==='A'?'start':'end'),html:`<span>${text}</span>`,iconSize:[28,28],iconAnchor:[14,14]})});const label=document.createElement('span');label.textContent=place.label+(place.accessDistance>5?' · 인근 보행로':'');p.bindTooltip(label,{direction:'top',offset:[0,-15]});return p;};
 function drawPins(){pinLayer.clearLayers();if(state.origin)marker(state.origin,'A').addTo(pinLayer);if(state.destination)marker(state.destination,'B').addTo(pinLayer);}
@@ -32,28 +39,47 @@ async function refreshShade(){const version=++shadeVersion,region=regionVersion;
   }catch{ /* Route cards retain their own explicit coverage status. */ }
 }
 const searchControllers={};
-function hideOptions(id){const c=searchControllers[id];if(c){c.version++;c.items=[];c.active=-1;}$(id+'-options').hidden=true;$(id).setAttribute('aria-expanded','false');$(id).removeAttribute('aria-activedescendant');}
+function hideOptions(id){const c=searchControllers[id];if(c){c.version++;c.items=[];c.active=-1;c.abort?.abort();}$(id+'-options').hidden=true;$(id).setAttribute('aria-expanded','false');$(id).removeAttribute('aria-activedescendant');}
 async function selectPlace(id,place){
-  const city=place.city||state.city;
-  if(place.type==='area'){hideOptions(id);$(id).value='';await loadRegion(city,false);map.setView([place.coordinate[1],place.coordinate[0]],16,{animate:false});$('route-status').textContent='지도를 이동했어요. 장소명을 검색하거나 지도에서 출발·도착을 지정하세요.';return;}
-  const switched=city!==state.city,hadOther=!!state[id==='origin'?'destination':'origin'];
-  if(switched){await loadRegion(city,false);if(state.city!==city||!state.ready)return;}
-  state[id]=place;$(id).value=place.label;hideOptions(id);clearRoutes(state.origin&&state.destination?'그늘길 찾기를 누르면 경로를 지도에 표시해 드려요.':undefined);drawPins();map.panTo([place.coordinate[1],place.coordinate[0]],{animate:false});if(switched&&hadOther)$('route-status').textContent='도시 간 경로는 아직 지원하지 않아 이전 지점을 지웠어요. 같은 도시에서 다른 지점도 선택해 주세요.';}
+ const country=state.country,selection=++selectionVersion;hideOptions(id);
+ if(place.type==='area'){
+  if(place.source==='maptiler'){
+   if(place.bbox){const [w,s,e,n]=place.bbox;map.fitBounds([[s,w],[n,e]],{maxZoom:16,animate:false});}else map.setView([place.coordinate[1],place.coordinate[0]],12,{animate:false});
+   $(id).value=state[id]?.label||'';$('route-status').textContent='지도를 이동했어요. 상세 주소·장소를 검색하거나 지도에서 지점을 지정하세요.';return;
+  }
+  await loadRegion(place.city,false);if(selection!==selectionVersion||country!==state.country)return;
+  map.setView([place.coordinate[1],place.coordinate[0]],16,{animate:false});$('route-status').textContent='지도를 이동했어요. 장소명을 검색하거나 지도에서 출발·도착을 지정하세요.';return;
+ }
+ state[id]=null;drawPins();clearRoutes();
+ if(place.source==='maptiler'){
+  $('route-status').textContent='선택한 장소 인근의 보행로를 확인하고 있어요…';
+  place=await connectPlace(place,{country,available:state.available,mode:state.mode,snap:(city,point,mode)=>api('/api/snap',{city,point:JSON.stringify(point),mode})});
+  if(selection!==selectionVersion||country!==state.country)return;
+ }else place={...place,city:place.city||state.city};
+ if(place.nodeId&&place.city!==state.city){const previous={origin:state.origin,destination:state.destination};await loadRegion(place.city,false);if(selection!==selectionVersion||country!==state.country)return;Object.assign(state,previous);for(const key of ['origin','destination'])$(key).value=state[key]?.label||'';}
+ state[id]=place;$(id).value=place.label;clearRoutes();drawPins();map.setView([place.coordinate[1],place.coordinate[0]],16,{animate:false});
+ if(!place.nodeId)$('route-status').textContent='선택한 장소를 지도에 표시했어요. 이 지점은 그늘길 안내 범위 밖이거나 인근 보행로에 연결되지 않았습니다.';
+ else if(state.origin&&state.destination)$('route-status').textContent=state.origin.city===state.destination.city&&state.origin.nodeId&&state.destination.nodeId?'그늘길 찾기를 누르면 경로를 지도에 표시해 드려요.':'두 지점을 지도에 표시했어요. 경로는 같은 지원 구역 안에서만 계산할 수 있습니다.';
+}
+let selectionVersion=0;
 for(const id of ['origin','destination']){
-  const input=$(id),box=$(id+'-options'),controller={version:0,items:[],active:-1,timer:null};searchControllers[id]=controller;
+  const input=$(id),box=$(id+'-options'),controller={version:0,items:[],active:-1,timer:null,abort:null};searchControllers[id]=controller;
   controller.show=async()=>{
-    if(!state.ready){$('route-status').textContent='먼저 지원 지역을 선택해 주세요.';return;}
-    const serial=++controller.version,country=state.country;box.hidden=false;box.replaceChildren();input.setAttribute('aria-expanded','true');
-    try{const groups=await Promise.all(countries[country].cities.filter(city=>state.available[city]).map(async city=>(await api('/api/places',{city,q:input.value,mode:state.mode})).map(place=>({...place,city}))));const q=input.value.trim().toLowerCase();const aliases={tokyo:['도쿄','tokyo','東京'],osaka:['오사카','osaka','大阪'],kyoto:['교토','kyoto','京都'],hongkong:['홍콩','hong kong','香港']};const areas=q?countries[country].cities.filter(city=>aliases[city].some(name=>name.toLowerCase().includes(q))).map(city=>({type:'area',city,label:regions[city].name+' 지도에서 보기',coordinate:regions[city].center})):[];const items=[...areas,...groups.flat()].slice(0,18);if(serial!==controller.version||country!==state.country)return;controller.items=items;controller.active=-1;box.replaceChildren();
-      if(!items.length){const empty=document.createElement('div');empty.className='empty';empty.textContent='현재 지원 범위에서 찾지 못했어요. 지도 점선 안을 선택하거나 다른 장소명으로 검색해 주세요.';box.append(empty);}
-      items.forEach((place,i)=>{const button=document.createElement('button');button.type='button';button.id=`${id}-option-${i}`;button.setAttribute('role','option');button.setAttribute('aria-selected','false');const name=document.createElement('span');name.textContent=place.label;const sub=document.createElement('small');sub.textContent=`${regions[place.city].name} · ${regions[place.city].area}${place.accessDistance>5?' · 인근 보행로 기준':''}`;button.append(name,sub);button.onclick=()=>selectPlace(id,place);box.append(button);});
-    }catch(e){if(serial===controller.version){box.replaceChildren();const empty=document.createElement('div');empty.className='empty';empty.textContent=e.message;box.append(empty);}}
+    if(!state.ready&&!mapConfig.mapKey){$('route-status').textContent='먼저 지원 지역을 선택해 주세요.';return;}
+    controller.abort?.abort();const requestAbort=new AbortController();controller.abort=requestAbort;const query=input.value.trim(),serial=++controller.version,country=state.country;box.hidden=false;box.replaceChildren();input.setAttribute('aria-expanded','true');
+    try{const localResults=await Promise.allSettled(countries[country].cities.filter(city=>state.available[city]).map(async city=>(await api('/api/places',{city,q:query,mode:state.mode})).map(place=>({...place,city}))));const groups=localResults.filter(result=>result.status==='fulfilled').map(result=>result.value);if(serial!==controller.version||country!==state.country)return;const q=query.toLowerCase();const aliases={tokyo:['도쿄','tokyo','東京'],osaka:['오사카','osaka','大阪'],kyoto:['교토','kyoto','京都'],hongkong:['홍콩','hong kong','香港']};const areas=q?countries[country].cities.filter(city=>aliases[city].some(name=>name.toLowerCase().includes(q))).map(city=>({type:'area',city,label:regions[city].name+' 지도에서 보기',coordinate:regions[city].center})):[];let items=[...areas,...groups.flat()].slice(0,18),providerError='';
+      if(mapConfig.mapKey&&q.length>=2){try{const center=map.getCenter();const remote=await searchMapTiler(query,{key:mapConfig.mapKey,country,proximity:[center.lng,center.lat],signal:AbortSignal.any([requestAbort.signal,AbortSignal.timeout(10000)])});items=remote.length?remote:items;}catch(error){if(error.name==='AbortError')return;providerError=error.message;}}
+      if(serial!==controller.version||country!==state.country)return;controller.items=items;controller.active=-1;box.replaceChildren();
+      if(providerError){const notice=document.createElement('div');notice.className='empty';notice.textContent=providerError+' 저장된 시범 구역의 검색 결과를 표시합니다.';box.append(notice);}
+      if(!items.length){const empty=document.createElement('div');empty.className='empty';empty.textContent=mapConfig.mapKey?'검색 결과가 없어요. 상세 주소나 현지어 이름으로 다시 검색해 주세요.':'현재 지원 범위에서 찾지 못했어요. 지도 점선 안을 선택하거나 다른 장소명으로 검색해 주세요.';box.append(empty);}
+      items.forEach((place,i)=>{const button=document.createElement('button');button.type='button';button.id=`${id}-option-${i}`;button.setAttribute('role','option');button.setAttribute('aria-selected','false');const name=document.createElement('span');name.textContent=place.label;const sub=document.createElement('small');sub.textContent=place.source==='maptiler'?(place.type==='area'?'MapTiler · 지도에서 지역 보기':regionAt(place.coordinate,country,state.available)?'MapTiler · 선택 후 보행로 연결 확인':'MapTiler · 지도 표시 가능 / 그늘길 지원 범위 밖'):`${regions[place.city].name} · ${regions[place.city].area}${place.accessDistance>5?' · 인근 보행로 기준':''}`;button.append(name,sub);button.onclick=()=>selectPlace(id,place);box.append(button);});
+    }catch(e){if(serial===controller.version&&e.name!=='AbortError'){box.replaceChildren();const empty=document.createElement('div');empty.className='empty';empty.textContent=e.message;box.append(empty);}}
   };
   input.onfocus=()=>controller.show();
-  input.oninput=()=>{hideOptions(id);state[id]=null;drawPins();clearRoutes();clearTimeout(controller.timer);controller.timer=setTimeout(controller.show,150);};
+  input.oninput=()=>{hideOptions(id);state[id]=null;drawPins();clearRoutes();clearTimeout(controller.timer);selectionVersion++;controller.timer=setTimeout(controller.show,mapConfig.mapKey?350:150);};
   input.onkeydown=event=>{
     if(event.key==='Escape'){hideOptions(id);return;}
-    if(event.key==='ArrowDown'||event.key==='ArrowUp'){event.preventDefault();if(box.hidden){controller.show();return;}if(!controller.items.length)return;controller.active=(controller.active+(event.key==='ArrowDown'?1:-1)+controller.items.length)%controller.items.length;[...box.querySelectorAll('button')].forEach((b,i)=>b.setAttribute('aria-selected',i===controller.active));input.setAttribute('aria-activedescendant',`${id}-option-${controller.active}`);box.children[controller.active]?.scrollIntoView({block:'nearest'});}
+    if(event.key==='ArrowDown'||event.key==='ArrowUp'){event.preventDefault();if(box.hidden){controller.show();return;}if(!controller.items.length)return;controller.active=(controller.active+(event.key==='ArrowDown'?1:-1)+controller.items.length)%controller.items.length;[...box.querySelectorAll('button')].forEach((b,i)=>b.setAttribute('aria-selected',i===controller.active));input.setAttribute('aria-activedescendant',`${id}-option-${controller.active}`);box.querySelectorAll('button')[controller.active]?.scrollIntoView({block:'nearest'});}
     if(event.key==='Enter'){event.preventDefault();if(!box.hidden&&controller.items.length)selectPlace(id,controller.items[Math.max(0,controller.active)]);else if(state.origin&&state.destination)computeRoutes();else controller.show();}
   };
 }
@@ -84,6 +110,7 @@ function drawRoute(fit=true){
 async function computeRoutes({scroll=true}={}){
   if(!state.ready)return;if(!$('date').reportValidity()||!$('time-error').hidden)return;
   for(const id of ['origin','destination'])if(!state[id]){$('route-status').textContent=`검색 결과에서 ${id==='origin'?'출발지':'도착지'}를 선택해 주세요.`;$(id).focus();return;}
+  if(!state.origin.nodeId||!state.destination.nodeId||state.origin.city!==state.destination.city){clearRoutes('선택한 장소는 지도에서 확인할 수 있어요. 그늘길 계산은 두 지점이 같은 점선 지원 구역 안의 보행로에 연결된 경우에만 가능합니다.');fitEverything();return;}
   const serial=++routeVersion,region=regionVersion;state.pendingRoute=serial;$('search').disabled=true;$('route-status').textContent='선택한 시간의 그늘길을 찾고 있어요…';routeLayer.clearLayers();$('routes').replaceChildren();
   try{const results=await api('/api/route',{city:state.city,startNode:state.origin.nodeId,endNode:state.destination.nodeId,mode:state.mode,departure:new Date(clock.epoch).toISOString()});if(serial!==routeVersion||region!==regionVersion)return;state.routes=results;if(!results.some(r=>r.kind===state.kind))state.kind=results[0].kind;renderRoutes();drawRoute();if(scroll&&window.matchMedia('(max-width:760px)').matches)document.querySelector('.map-panel').scrollIntoView({behavior:window.matchMedia('(prefers-reduced-motion:reduce)').matches?'auto':'smooth',block:'start'});$('route-status').textContent='선택한 경로를 지도에 표시했어요.';
   }catch(e){if(serial===routeVersion){clearRoutes(e.message);$('insight').textContent='이 조건으로 길을 찾지 못했어요';}}
@@ -93,12 +120,12 @@ async function loadRegion(city=countries[state.country].cities.find(c=>state.ava
   clearTimeout(timeTimer);timeRecalcWanted=false;const version=++regionVersion;state.city=city;state.ready=false;state.origin=null;state.destination=null;$('origin').value='';$('destination').value='';for(const id of ['origin','destination'])hideOptions(id);clearRoutes('지역의 장소 정보를 불러오고 있어요.');$('location-status').textContent='장소 정보를 불러오고 있어요…';drawPins();shadeLayer.clearLayers();fallbackLayer.clearLayers();clock.setZone(regions[state.city].zone);displayClock();
   const region=regions[state.city];if(resetView)$('area-name').textContent=`${region.name} · ${region.area}`;if(resetView)map.setView([region.center[1],region.center[0]],16,{animate:false});$('search').disabled=true;for(const id of ['origin','destination'])$(id).disabled=true;
   if(!state.available[state.city]){$('location-status').textContent='이 지역의 길찾기 자료를 준비 중입니다.';$('route-status').textContent='현재 지원되는 다른 지역을 선택해 주세요.';return;}
-  try{const area=await api('/api/area',{city:state.city});if(version!==regionVersion)return;state.area=area;state.ready=true;$('search').disabled=false;for(const id of ['origin','destination'])$(id).disabled=false;$('location-status').textContent=`${countries[state.country].name}의 장소를 검색하거나 지도에서 지점을 선택하세요. 길찾기는 점선 안에서 지원합니다.`;$('route-status').textContent='출발지와 도착지를 검색해 주세요.';refreshShade();if(tileFailure)showRoadFallback();}
-  catch(e){if(version===regionVersion){$('location-status').textContent=e.message;$('route-status').textContent='지역 자료를 불러오지 못했어요. 다시 선택해 주세요.';}}
+  try{const area=await api('/api/area',{city:state.city});if(version!==regionVersion)return;state.area=area;state.ready=true;$('search').disabled=false;for(const id of ['origin','destination'])$(id).disabled=false;$('location-status').textContent=`${countries[state.country].name} ${mapConfig.mapKey?'전역의 주소·장소를 MapTiler로':'시범 구역의 장소를'} 검색합니다. 그늘길 안내는 점선 안에서 지원합니다.`;$('route-status').textContent='출발지와 도착지를 검색해 주세요.';refreshShade();if(tileFailure)showRoadFallback();}
+  catch(e){if(version===regionVersion){$('location-status').textContent=e.message;for(const id of ['origin','destination'])$(id).disabled=!mapConfig.mapKey;$('route-status').textContent=mapConfig.mapKey?'장소 검색과 지도 표시는 사용할 수 있지만, 이 지역의 길찾기 자료를 불러오지 못했어요.':'지역 자료를 불러오지 못했어요. 다시 선택해 주세요.';}}
 }
-$('region').onchange=async()=>{state.country=$('region').value;if(state.pick)pickMode(state.pick);drawCoverage();const c=countries[state.country];map.setView([c.center[1],c.center[0]],c.zoom,{animate:false});await loadRegion(undefined,false);};$('search').onclick=computeRoutes;
-for(const mode of ['walk','bike'])$(mode).onclick=()=>{if(state.mode===mode)return;state.mode=mode;for(const m of ['walk','bike']){$(m).classList.toggle('active',m===mode);$(m).setAttribute('aria-pressed',m===mode);}clearRoutes();for(const id of ['origin','destination']){if(state[id]?.modes&&!state[id].modes.includes(mode)){state[id]=null;$(id).value='';}hideOptions(id);}drawPins();};
-$('swap').onclick=()=>{[state.origin,state.destination]=[state.destination,state.origin];$('origin').value=state.origin?.label||'';$('destination').value=state.destination?.label||'';clearRoutes();drawPins();};
+$('region').onchange=async()=>{selectionVersion++;state.country=$('region').value;if(state.pick)pickMode(state.pick);drawCoverage();const c=countries[state.country];map.setView([c.center[1],c.center[0]],c.zoom,{animate:false});await loadRegion(undefined,false);};$('search').onclick=computeRoutes;
+for(const mode of ['walk','bike'])$(mode).onclick=()=>{if(state.mode===mode)return;selectionVersion++;state.mode=mode;for(const m of ['walk','bike']){$(m).classList.toggle('active',m===mode);$(m).setAttribute('aria-pressed',m===mode);}clearRoutes();for(const id of ['origin','destination']){if(state[id]?.source==='maptiler'||state[id]?.modes&&!state[id].modes.includes(mode)){state[id]=null;$(id).value='';}hideOptions(id);}drawPins();};
+$('swap').onclick=()=>{selectionVersion++;[state.origin,state.destination]=[state.destination,state.origin];$('origin').value=state.origin?.label||'';$('destination').value=state.destination?.label||'';clearRoutes();drawPins();};
 function timeChanged(){timeRecalcWanted ||= state.routes.length>0;try{clock.select($('date').value,+$('time').value);$('time-error').hidden=true;displayClock();clearRoutes();clearTimeout(timeTimer);timeTimer=setTimeout(()=>{const recalc=timeRecalcWanted;timeRecalcWanted=false;refreshShade();if(recalc&&state.origin&&state.destination)computeRoutes({scroll:false});},200);}catch(e){$('time-error').textContent=e.message;$('time-error').hidden=false;}}
 $('time').oninput=timeChanged;$('date').onchange=timeChanged;
 $('now').onclick=()=>{const recalc=state.routes.length>0;clock.follow();$('time-error').hidden=true;displayClock();clearRoutes();refreshShade();if(recalc)computeRoutes({scroll:false});};
@@ -152,5 +179,5 @@ $('locate').onclick=()=>{
 };
 $('map-locate').onclick=()=>$('locate').onclick();
 window.addEventListener('pagehide',()=>{if(watchId!==null)stopLocation();});
-new ResizeObserver(()=>map.invalidateSize()).observe($('map'));displayClock();
-try{const catalog=await api('/api/regions');state.available=catalog.available;await loadRegion();drawCoverage();}catch(e){$('location-status').textContent=e.message;$('search').disabled=true;}
+new ResizeObserver(()=>map.invalidateSize()).observe($('map'));displayClock();$('map-provider').textContent=mapConfig.mapKey?'MapTiler 지도 · 전국 장소 검색':'기본 지도 · 시범 구역 검색';
+try{const catalog=await api('/api/regions');state.available=catalog.available;await loadRegion();drawCoverage();}catch(e){$('location-status').textContent=e.message;$('search').disabled=true;for(const id of ['origin','destination'])$(id).disabled=!mapConfig.mapKey;}

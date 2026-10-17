@@ -23,6 +23,7 @@ test('HTTP server serves static files, missing buildings and invalid routes safe
   try{
     const page=await fetch(base+'/');assert.equal(page.status,200);assert((await page.text()).includes('출발지 검색'));
     assert.equal((await fetch(base+'/.env')).status,404);
+    const mapConfig=await (await fetch(base+'/map-config.json')).json();assert.equal(typeof mapConfig.mapKey,'string');assert.equal(mapConfig.mapStyle,process.env.MAPTILER_STYLE||'streets-v4');
     assert.equal((await fetch(base+'/api/buildings?city=unknown')).status,400);
     assert.equal((await fetch(base+'/api/route?start=invalid')).status,400);
     const config=await (await fetch(base+'/api/config')).json();assert(!('routingKey' in config));assert.equal(config.cities.hongkong.zone,'Asia/Hong_Kong');
