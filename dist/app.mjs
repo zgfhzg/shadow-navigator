@@ -129,7 +129,7 @@ async function loadRegion(city=countries[state.country].cities.find(c=>state.ava
   catch(e){if(version===regionVersion){$('location-status').textContent=e.message;for(const id of ['origin','destination'])$(id).disabled=!mapConfig.mapKey;$('route-status').textContent=mapConfig.mapKey?'장소 검색과 지도 표시는 사용할 수 있지만, 이 지역의 길찾기 자료를 불러오지 못했어요.':'지역 자료를 불러오지 못했어요. 다시 선택해 주세요.';}}
 }
 $('region').onchange=async()=>{selectionVersion++;state.country=$('region').value;map.attributionControl.removeAttribution(buildingCredit);if(state.country==='hongkong')map.attributionControl.addAttribution(buildingCredit);if(state.pick)pickMode(state.pick);drawCoverage();const c=countries[state.country];map.setView([c.center[1],c.center[0]],c.zoom,{animate:false});await loadRegion(undefined,false);};$('search').onclick=computeRoutes;
-for(const mode of ['walk','bike'])$(mode).onclick=()=>{if(state.mode===mode)return;selectionVersion++;state.mode=mode;for(const m of ['walk','bike']){$(m).classList.toggle('active',m===mode);$(m).setAttribute('aria-pressed',m===mode);}clearRoutes();for(const id of ['origin','destination']){if(state[id]?.source==='maptiler'||state[id]?.modes&&!state[id].modes.includes(mode)){state[id]=null;$(id).value='';}hideOptions(id);}drawPins();};
+for(const mode of ['walk','bike'])$(mode).onclick=()=>{if(state.mode===mode)return;selectionVersion++;state.mode=mode;for(const m of ['walk','bike']){$(m).classList.toggle('active',m===mode);$(m).setAttribute('aria-pressed',m===mode);}clearRoutes();for(const id of ['origin','destination']){if(['maptiler','gps'].includes(state[id]?.source)||state[id]?.modes&&!state[id].modes.includes(mode)){state[id]=null;$(id).value='';}hideOptions(id);}drawPins();};
 $('swap').onclick=()=>{selectionVersion++;[state.origin,state.destination]=[state.destination,state.origin];$('origin').value=state.origin?.label||'';$('destination').value=state.destination?.label||'';clearRoutes();drawPins();};
 function timeChanged(){timeRecalcWanted ||= state.routes.length>0;try{clock.select($('date').value,+$('time').value);$('time-error').hidden=true;displayClock();clearRoutes();clearTimeout(timeTimer);timeTimer=setTimeout(()=>{const recalc=timeRecalcWanted;timeRecalcWanted=false;refreshShade();if(recalc&&state.origin&&state.destination)computeRoutes({scroll:false});},200);}catch(e){$('time-error').textContent=e.message;$('time-error').hidden=false;}}
 $('time').oninput=timeChanged;$('date').onchange=timeChanged;
@@ -156,7 +156,41 @@ function fitEverything(){
 }
 $('fit-all').onclick=fitEverything;
 const userStart=document.createElement('button');userStart.id='start-here';userStart.type='button';userStart.textContent='내 위치에서 출발';userStart.hidden=true;document.querySelector('.map-actions').append(userStart);
-userStart.onclick=async()=>{if(!state.user)return;const point=[state.user.longitude,state.user.latitude];const country=Object.keys(countries).find(c=>regionAt(point,c,state.available));if(!country){$('route-status').textContent='현재 위치는 길찾기 지원 범위 밖입니다. 홍콩 또는 일본 시범 구역의 출발지를 선택해 주세요.';return;}const city=regionAt(point,country,state.available);try{const snap=await api('/api/snap',{city,point:JSON.stringify(point),mode:state.mode});state.country=country;$('region').value=country;drawCoverage();await selectPlace('origin',{city,label:'내 위치 인근 보행로',nodeId:snap.id,coordinate:snap.coordinate,accessDistance:snap.distance});}catch{$('route-status').textContent='현재 위치 가까이 연결된 길을 찾지 못했어요. 지도에서 출발지를 선택해 주세요.';}};
+let locationSelection=0;
+async function setCurrentLocation(id){
+ const serial=++locationSelection,selection=++selectionVersion,countryBefore=state.country,mode=state.mode;
+ const button=$('current-'+id),label=id==='origin'?'출발지':'도착지';
+ const current=()=>serial===locationSelection&&selection===selectionVersion&&countryBefore===state.country&&mode===state.mode;
+ for(const key of ['origin','destination'])hideOptions(key);
+ button.disabled=true;button.textContent='위치 확인 중…';
+ $('route-status').textContent=`현재 위치를 확인해 ${label}로 설정하고 있어요…`;
+ try{
+  if(!navigator.geolocation)throw new Error('이 브라우저에서는 위치 기능을 사용할 수 없어요.');
+  const position=await new Promise((resolve,reject)=>navigator.geolocation.getCurrentPosition(resolve,reject,{enableHighAccuracy:true,timeout:15000,maximumAge:0}));
+  if(!current())return;
+  showUserPosition(position);
+  const point=[position.coords.longitude,position.coords.latitude];
+  const country=Object.keys(countries).find(c=>regionAt(point,c,state.available));
+  if(!country)throw new Error('현재 위치는 길찾기 지원 범위 밖이에요. 홍콩 또는 일본 시범 구역에서 설정할 수 있습니다.');
+  const city=regionAt(point,country,state.available);
+  const snap=await api('/api/snap',{city,point:JSON.stringify(point),mode});
+  if(!current())return;
+  if(country!==state.country){
+   state.country=country;$('region').value=country;
+   map.attributionControl.removeAttribution(buildingCredit);if(country==='hongkong')map.attributionControl.addAttribution(buildingCredit);
+   if(state.pick)pickMode(state.pick);drawCoverage();await loadRegion(city,false);
+   if(serial!==locationSelection||selection!==selectionVersion||country!==state.country||mode!==state.mode)return;
+  }
+  await selectPlace(id,{city,label:'현재 내 위치',nodeId:snap.id,coordinate:snap.coordinate,accessDistance:snap.distance,placeCoordinate:point,source:'gps'});
+  if(watchId===null)$('locate').onclick();
+ }catch(error){
+  if(!current())return;
+  const message=error.code===1?'위치 권한이 꺼져 있어요. 브라우저 설정에서 위치 접근을 허용해 주세요.':error.code===2?'현재 위치를 찾지 못했어요. GPS 수신 상태를 확인하고 다시 눌러 주세요.':error.code===3?'위치 확인 시간이 초과됐어요. 다시 눌러 주세요.':error.message?.includes('지원 범위')||!navigator.geolocation?error.message:'현재 위치 가까이 연결된 길을 찾지 못했어요. 지도에서 가까운 도로나 보행로를 선택해 주세요.';
+  $('route-status').textContent=message;$('gps-status').textContent=message;
+ }finally{button.disabled=false;button.textContent='현재 내 위치';}
+}
+for(const id of ['origin','destination'])$('current-'+id).onclick=()=>setCurrentLocation(id);
+userStart.onclick=()=>setCurrentLocation('origin');
 function pickMode(id){state.pick=state.pick===id?null:id;for(const key of ['origin','destination'])$('pick-'+key).setAttribute('aria-pressed',state.pick===key);$('map').classList.toggle('picking',!!state.pick);if(state.pick)$('route-status').textContent=`${state.country==='hongkong'?'홍콩 지도':'지도 점선 안'}의 길을 눌러 ${state.pick==='origin'?'출발지':'도착지'}를 지정하세요.`;}
 for(const id of ['origin','destination'])$('pick-'+id).onclick=()=>pickMode(id);
 map.on('click',async event=>{
@@ -167,6 +201,13 @@ map.on('click',async event=>{
     await selectPlace(id,{city,label:`지도에서 선택한 ${id==='origin'?'출발지':'도착지'}`,nodeId:snap.id,coordinate:snap.coordinate,accessDistance:snap.distance});if(id===state.pick)pickMode(id);
   }catch(e){$('route-status').textContent='선택 지점에서 연결된 길을 찾지 못했어요. 가까운 도로나 보행로를 눌러 주세요.';}
 });
+function showUserPosition(position){
+    const {latitude,longitude,accuracy}=position.coords;state.user={latitude,longitude,accuracy};
+    const latlng=[latitude,longitude];
+    if(!userMarker){userMarker=L.marker(latlng,{icon:L.divIcon({className:'user-location',html:'<span></span>',iconSize:[24,24],iconAnchor:[12,12]}),zIndexOffset:1000}).addTo(userLayer);userMarker.bindTooltip('내 현재 위치',{direction:'top'});userAccuracy=L.circle(latlng,{radius:accuracy,color:'#3388ff',weight:1,fillOpacity:.09,interactive:false}).addTo(userLayer);}
+    else {userMarker.setLatLng(latlng);userAccuracy.setLatLng(latlng).setRadius(accuracy);}
+    $('locate').textContent='내 위치 보기';stopButton.hidden=false;userStart.hidden=false;$('gps-status').textContent=`현재 위치 · 정확도 약 ${Math.round(accuracy)}m · ${new Date(position.timestamp).toLocaleTimeString('ko-KR',{hour:'2-digit',minute:'2-digit'})} 갱신`;
+}
 function stopLocation(){if(watchId!==null)navigator.geolocation.clearWatch(watchId);watchId=null;$('stop-location').hidden=true;userStart.hidden=true;$('locate').textContent='내 위치';$('gps-status').textContent=state.user?'위치 갱신 중단 · 마지막 위치 표시':'위치 추적이 꺼졌어요.';}
 const stopButton=document.createElement('button');stopButton.id='stop-location';stopButton.type='button';stopButton.textContent='위치 끄기';stopButton.hidden=true;stopButton.onclick=stopLocation;$('locate').after(stopButton);
 $('locate').onclick=()=>{
@@ -174,12 +215,8 @@ $('locate').onclick=()=>{
   if(watchId!==null){fitEverything();return;}
   $('gps-status').textContent='현재 위치를 확인하고 있어요…';$('locate').textContent='위치 확인 중';let first=true;
   watchId=navigator.geolocation.watchPosition(position=>{
-    const {latitude,longitude,accuracy}=position.coords;state.user={latitude,longitude,accuracy};
-    const latlng=[latitude,longitude];
-    if(!userMarker){userMarker=L.marker(latlng,{icon:L.divIcon({className:'user-location',html:'<span></span>',iconSize:[24,24],iconAnchor:[12,12]}),zIndexOffset:1000}).addTo(userLayer);userMarker.bindTooltip('내 현재 위치',{direction:'top'});userAccuracy=L.circle(latlng,{radius:accuracy,color:'#3388ff',weight:1,fillOpacity:.09,interactive:false}).addTo(userLayer);}
-    else {userMarker.setLatLng(latlng);userAccuracy.setLatLng(latlng).setRadius(accuracy);}
-    $('locate').textContent='내 위치 보기';stopButton.hidden=false;userStart.hidden=false;$('gps-status').textContent=`현재 위치 · 정확도 약 ${Math.round(accuracy)}m · ${new Date(position.timestamp).toLocaleTimeString('ko-KR',{hour:'2-digit',minute:'2-digit'})} 갱신`;
-    if(first){first=false;if(state.routes.length)fitEverything();else map.setView(latlng,16);}
+    showUserPosition(position);
+    if(first){first=false;if(state.routes.length)fitEverything();else map.setView([position.coords.latitude,position.coords.longitude],16);}
   },error=>{if(error.code===1)stopLocation();$('locate').textContent=watchId===null?'내 위치':'위치 다시 보기';$('gps-status').textContent=error.code===1?'위치 권한이 꺼져 있어요. 브라우저 설정에서 허용하면 내 위치를 표시할 수 있어요.':'현재 위치를 갱신하지 못했어요. 수신이 회복되면 다시 표시합니다.';},{enableHighAccuracy:true,timeout:15000,maximumAge:10000});
 };
 $('map-locate').onclick=()=>$('locate').onclick();
