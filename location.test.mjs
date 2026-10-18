@@ -8,7 +8,7 @@ function fixture(getCurrentPosition){
  const elements=new Map();const element=id=>{if(!elements.has(id))elements.set(id,{textContent:'',disabled:false});return elements.get(id);};
  const state={country:'hongkong',mode:'walk',available:{hongkong:true},origin:{label:'original start'},destination:{label:'original end'}};
  const selected=[];const shown=[];
- const context=vm.createContext({state,selectionVersion:0,$:element,navigator:{geolocation:{getCurrentPosition}},countries:{hongkong:{}},regionAt:()=> 'hongkong',hideOptions(){},showUserPosition:p=>shown.push(p),api:async()=>({id:'real-road-node',coordinate:[114.16,22.28],distance:5}),selectPlace:async(id,p)=>{selected.push(id);state[id]=p;},watchId:1});
+ const context=vm.createContext({state,selectionVersion:0,$:element,translate:value=>value,placeLabel:p=>p?.label||'',navigator:{geolocation:{getCurrentPosition}},countries:{hongkong:{}},regionAt:()=> 'hongkong',hideOptions(){},showUserPosition:p=>shown.push(p),api:async()=>({id:'real-road-node',coordinate:[114.16,22.28],distance:5}),selectPlace:async(id,p)=>{selected.push(id);state[id]=p;},watchId:1});
  vm.runInContext(handler,context);return {state,selected,shown,element,context,run:id=>context.setCurrentLocation(id)};
 }
 const position={coords:{longitude:114.16001,latitude:22.28001,accuracy:8},timestamp:Date.now()};

@@ -1,3 +1,5 @@
+import {installLanguageUI,getLanguage,languages,translate,placeLabel} from './i18n.mjs';
+installLanguageUI();
 import * as L from './vendor/leaflet.mjs';
 import {api as backendApi} from './browser-client.mjs';
 const api=(path,params={})=>backendApi(path,{...params,...(params.city==='hongkong'?{coverage:'country'}:{})});
@@ -28,7 +30,7 @@ tiles.on('tileerror',()=>{
  else showRoadFallback();
 });
 async function showRoadFallback(){const city=state.city,version=regionVersion;try{const network=await api('/api/network',{city,bounds:JSON.stringify(viewBounds())});if(version!==regionVersion)return;fallbackLayer.clearLayers();L.geoJSON(network.roads,{style:{color:'#b3bfd2',weight:1.5,opacity:.7}}).addTo(fallbackLayer);$('location-status').textContent='배경 지도를 연결하지 못해 실제 도로 형상으로 표시합니다.';}catch{}}
-const marker=(place,text)=>{const p=L.marker([place.coordinate[1],place.coordinate[0]],{icon:L.divIcon({className:'map-pin '+(text==='A'?'start':'end'),html:`<span>${text}</span>`,iconSize:[28,28],iconAnchor:[14,14]})});const label=document.createElement('span');label.textContent=place.label+(place.accessDistance>5?' · 인근 보행로':'');p.bindTooltip(label,{direction:'top',offset:[0,-15]});return p;};
+const marker=(place,text)=>{const p=L.marker([place.coordinate[1],place.coordinate[0]],{icon:L.divIcon({className:'map-pin '+(text==='A'?'start':'end'),html:`<span>${text}</span>`,iconSize:[28,28],iconAnchor:[14,14]})});const label=document.createElement('span');label.textContent=placeLabel(place)+(place.accessDistance>5?' · 인근 보행로':'');p.bindTooltip(label,{direction:'top',offset:[0,-15]});return p;};
 function drawPins(){pinLayer.clearLayers();if(state.origin)marker(state.origin,'A').addTo(pinLayer);if(state.destination)marker(state.destination,'B').addTo(pinLayer);}
 function clearRoutes(message='출발지와 도착지를 검색한 뒤 그늘길 찾기를 눌러 주세요.'){
   routeVersion++;state.pendingRoute=null;$('search').disabled=!state.ready;state.routes=[];routeLayer.clearLayers();$('routes').replaceChildren();$('result-count').textContent='';$('route-status').textContent=message;$('insight').textContent='어디로 떠나볼까요?';$('insight-sub').textContent='선택한 장소 사이의 경로를 지도에 표시합니다.';
@@ -44,13 +46,14 @@ async function refreshShade(){const version=++shadeVersion,region=regionVersion;
   }catch{ /* Route cards retain their own explicit coverage status. */ }
 }
 const searchControllers={};
+document.addEventListener('languagechange',()=>{for(const id of ['origin','destination']){hideOptions(id);if(state[id])$(id).value=placeLabel(state[id]);}drawPins();});
 function hideOptions(id){const c=searchControllers[id];if(c){c.version++;c.items=[];c.active=-1;c.abort?.abort();}$(id+'-options').hidden=true;$(id).setAttribute('aria-expanded','false');$(id).removeAttribute('aria-activedescendant');}
 async function selectPlace(id,place){
  const country=state.country,selection=++selectionVersion;hideOptions(id);
  if(place.type==='area'){
   if(place.source==='maptiler'){
    if(place.bbox){const [w,s,e,n]=place.bbox;map.fitBounds([[s,w],[n,e]],{maxZoom:16,animate:false});}else map.setView([place.coordinate[1],place.coordinate[0]],12,{animate:false});
-   $(id).value=state[id]?.label||'';$('route-status').textContent='지도를 이동했어요. 상세 주소·장소를 검색하거나 지도에서 지점을 지정하세요.';return;
+   $(id).value=placeLabel(state[id]);$('route-status').textContent='지도를 이동했어요. 상세 주소·장소를 검색하거나 지도에서 지점을 지정하세요.';return;
   }
   await loadRegion(place.city,false);if(selection!==selectionVersion||country!==state.country)return;
   map.setView([place.coordinate[1],place.coordinate[0]],16,{animate:false});$('route-status').textContent='지도를 이동했어요. 장소명을 검색하거나 지도에서 출발·도착을 지정하세요.';return;
@@ -61,8 +64,8 @@ async function selectPlace(id,place){
   place=await connectPlace(place,{country,available:state.available,mode:state.mode,snap:(city,point,mode)=>api('/api/snap',{city,point:JSON.stringify(point),mode})});
   if(selection!==selectionVersion||country!==state.country)return;
  }else place={...place,city:place.city||state.city};
- if(place.nodeId&&place.city!==state.city){const previous={origin:state.origin,destination:state.destination};await loadRegion(place.city,false);if(selection!==selectionVersion||country!==state.country)return;Object.assign(state,previous);for(const key of ['origin','destination'])$(key).value=state[key]?.label||'';}
- state[id]=place;$(id).value=place.label;clearRoutes();drawPins();map.setView([place.coordinate[1],place.coordinate[0]],16,{animate:false});
+ if(place.nodeId&&place.city!==state.city){const previous={origin:state.origin,destination:state.destination};await loadRegion(place.city,false);if(selection!==selectionVersion||country!==state.country)return;Object.assign(state,previous);for(const key of ['origin','destination'])$(key).value=placeLabel(state[key]);}
+ state[id]=place;$(id).value=placeLabel(place);clearRoutes();drawPins();map.setView([place.coordinate[1],place.coordinate[0]],16,{animate:false});
  if(!place.nodeId)$('route-status').textContent=state.country==='hongkong'?'선택한 장소를 지도에 표시했어요. 가까운 지상 보행로에 연결되지 않았습니다. 지도에서 출입구 인근의 도로를 선택해 주세요.':'선택한 장소를 지도에 표시했어요. 이 지점은 그늘길 안내 범위 밖이거나 인근 보행로에 연결되지 않았습니다.';
  else if(state.origin&&state.destination)$('route-status').textContent=state.origin.city===state.destination.city&&state.origin.nodeId&&state.destination.nodeId?'그늘길 찾기를 누르면 경로를 지도에 표시해 드려요.':'두 지점을 지도에 표시했어요. 같은 국가의 연결된 보행·자전거 도로에서 경로를 계산할 수 있습니다.';
 }
@@ -73,11 +76,11 @@ for(const id of ['origin','destination']){
     if(!state.ready&&!mapConfig.mapKey){$('route-status').textContent='먼저 지원 지역을 선택해 주세요.';return;}
     controller.abort?.abort();const requestAbort=new AbortController();controller.abort=requestAbort;const query=input.value.trim(),serial=++controller.version,country=state.country;box.hidden=false;box.replaceChildren();input.setAttribute('aria-expanded','true');
     try{const localResults=await Promise.allSettled(countries[country].cities.filter(city=>state.available[city]).map(async city=>(await api('/api/places',{city,q:query,mode:state.mode})).map(place=>({...place,city}))));const groups=localResults.filter(result=>result.status==='fulfilled').map(result=>result.value);if(serial!==controller.version||country!==state.country)return;const q=query.toLowerCase();const aliases={tokyo:['도쿄','tokyo','東京'],osaka:['오사카','osaka','大阪'],kyoto:['교토','kyoto','京都'],hongkong:['홍콩','hong kong','香港']};const areas=q?countries[country].cities.filter(city=>aliases[city].some(name=>name.toLowerCase().includes(q))).map(city=>({type:'area',city,label:regions[city].name+' 지도에서 보기',coordinate:regions[city].center})):[];let items=[...areas,...groups.flat()].slice(0,18),providerError='';
-      if(mapConfig.mapKey&&q.length>=2){try{const center=map.getCenter();const remote=await searchMapTiler(query,{key:mapConfig.mapKey,country,proximity:[center.lng,center.lat],signal:AbortSignal.any([requestAbort.signal,AbortSignal.timeout(10000)])});items=remote.length?remote:items;}catch(error){if(error.name==='AbortError')return;providerError=error.message;}}
+      if(mapConfig.mapKey&&q.length>=2){try{const center=map.getCenter();const remote=await searchMapTiler(query,{key:mapConfig.mapKey,country,language:languages[getLanguage()].search,proximity:[center.lng,center.lat],signal:AbortSignal.any([requestAbort.signal,AbortSignal.timeout(10000)])});items=remote.length?remote:items;}catch(error){if(error.name==='AbortError')return;providerError=error.message;}}
       if(serial!==controller.version||country!==state.country)return;controller.items=items;controller.active=-1;box.replaceChildren();
       if(providerError){const notice=document.createElement('div');notice.className='empty';notice.textContent=providerError+' 저장된 장소·거리 검색 결과를 표시합니다.';box.append(notice);}
       if(!items.length){const empty=document.createElement('div');empty.className='empty';empty.textContent=mapConfig.mapKey?'검색 결과가 없어요. 상세 주소나 현지어 이름으로 다시 검색해 주세요.':'현재 지원 범위에서 찾지 못했어요. 지도 점선 안을 선택하거나 다른 장소명으로 검색해 주세요.';box.append(empty);}
-      items.forEach((place,i)=>{const button=document.createElement('button');button.type='button';button.id=`${id}-option-${i}`;button.setAttribute('role','option');button.setAttribute('aria-selected','false');const name=document.createElement('span');name.textContent=place.label;const sub=document.createElement('small');sub.textContent=place.source==='maptiler'?(place.type==='area'?'MapTiler · 지도에서 지역 보기':regionAt(place.coordinate,country,state.available)?'MapTiler · 선택 후 보행로 연결 확인':'MapTiler · 지도 표시 가능 / 그늘길 지원 범위 밖'):`${regions[place.city].name} · ${regions[place.city].area}${place.accessDistance>5?' · 인근 보행로 기준':''}`;button.append(name,sub);button.onclick=()=>selectPlace(id,place);box.append(button);});
+      items.forEach((place,i)=>{const button=document.createElement('button');button.type='button';button.id=`${id}-option-${i}`;button.setAttribute('role','option');button.setAttribute('aria-selected','false');const name=document.createElement('span');name.textContent=placeLabel(place);const sub=document.createElement('small');sub.textContent=place.source==='maptiler'?(place.type==='area'?'MapTiler · 지도에서 지역 보기':regionAt(place.coordinate,country,state.available)?'MapTiler · 선택 후 보행로 연결 확인':'MapTiler · 지도 표시 가능 / 그늘길 지원 범위 밖'):`${regions[place.city].name} · ${regions[place.city].area}${place.accessDistance>5?' · 인근 보행로 기준':''}`;button.append(name,sub);button.onclick=()=>selectPlace(id,place);box.append(button);});
     }catch(e){if(serial===controller.version&&e.name!=='AbortError'){box.replaceChildren();const empty=document.createElement('div');empty.className='empty';empty.textContent=e.message;box.append(empty);}}
   };
   input.onfocus=()=>controller.show();
@@ -130,7 +133,7 @@ async function loadRegion(city=countries[state.country].cities.find(c=>state.ava
 }
 $('region').onchange=async()=>{selectionVersion++;state.country=$('region').value;map.attributionControl.removeAttribution(buildingCredit);if(state.country==='hongkong')map.attributionControl.addAttribution(buildingCredit);if(state.pick)pickMode(state.pick);drawCoverage();const c=countries[state.country];map.setView([c.center[1],c.center[0]],c.zoom,{animate:false});await loadRegion(undefined,false);};$('search').onclick=computeRoutes;
 for(const mode of ['walk','bike'])$(mode).onclick=()=>{if(state.mode===mode)return;selectionVersion++;state.mode=mode;for(const m of ['walk','bike']){$(m).classList.toggle('active',m===mode);$(m).setAttribute('aria-pressed',m===mode);}clearRoutes();for(const id of ['origin','destination']){if(['maptiler','gps'].includes(state[id]?.source)||state[id]?.modes&&!state[id].modes.includes(mode)){state[id]=null;$(id).value='';}hideOptions(id);}drawPins();};
-$('swap').onclick=()=>{selectionVersion++;[state.origin,state.destination]=[state.destination,state.origin];$('origin').value=state.origin?.label||'';$('destination').value=state.destination?.label||'';clearRoutes();drawPins();};
+$('swap').onclick=()=>{selectionVersion++;[state.origin,state.destination]=[state.destination,state.origin];$('origin').value=placeLabel(state.origin);$('destination').value=placeLabel(state.destination);clearRoutes();drawPins();};
 function timeChanged(){timeRecalcWanted ||= state.routes.length>0;try{clock.select($('date').value,+$('time').value);$('time-error').hidden=true;displayClock();clearRoutes();clearTimeout(timeTimer);timeTimer=setTimeout(()=>{const recalc=timeRecalcWanted;timeRecalcWanted=false;refreshShade();if(recalc&&state.origin&&state.destination)computeRoutes({scroll:false});},200);}catch(e){$('time-error').textContent=e.message;$('time-error').hidden=false;}}
 $('time').oninput=timeChanged;$('date').onchange=timeChanged;
 $('now').onclick=()=>{const recalc=state.routes.length>0;clock.follow();$('time-error').hidden=true;displayClock();clearRoutes();refreshShade();if(recalc)computeRoutes({scroll:false});};
@@ -206,7 +209,7 @@ function showUserPosition(position){
     const latlng=[latitude,longitude];
     if(!userMarker){userMarker=L.marker(latlng,{icon:L.divIcon({className:'user-location',html:'<span></span>',iconSize:[24,24],iconAnchor:[12,12]}),zIndexOffset:1000}).addTo(userLayer);userMarker.bindTooltip('내 현재 위치',{direction:'top'});userAccuracy=L.circle(latlng,{radius:accuracy,color:'#3388ff',weight:1,fillOpacity:.09,interactive:false}).addTo(userLayer);}
     else {userMarker.setLatLng(latlng);userAccuracy.setLatLng(latlng).setRadius(accuracy);}
-    $('locate').textContent='내 위치 보기';stopButton.hidden=false;userStart.hidden=false;$('gps-status').textContent=`현재 위치 · 정확도 약 ${Math.round(accuracy)}m · ${new Date(position.timestamp).toLocaleTimeString('ko-KR',{hour:'2-digit',minute:'2-digit'})} 갱신`;
+    $('locate').textContent='내 위치 보기';stopButton.hidden=false;userStart.hidden=false;$('gps-status').textContent=`현재 위치 · 정확도 약 ${Math.round(accuracy)}m · ${new Date(position.timestamp).toLocaleTimeString(languages[getLanguage()].tag,{hour:'2-digit',minute:'2-digit'})} 갱신`;
 }
 function stopLocation(){if(watchId!==null)navigator.geolocation.clearWatch(watchId);watchId=null;$('stop-location').hidden=true;userStart.hidden=true;$('locate').textContent='내 위치';$('gps-status').textContent=state.user?'위치 갱신 중단 · 마지막 위치 표시':'위치 추적이 꺼졌어요.';}
 const stopButton=document.createElement('button');stopButton.id='stop-location';stopButton.type='button';stopButton.textContent='위치 끄기';stopButton.hidden=true;stopButton.onclick=stopLocation;$('locate').after(stopButton);

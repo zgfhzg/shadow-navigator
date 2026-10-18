@@ -16,11 +16,11 @@ export function tileOptions(config){
  const {mapKey,mapStyle}=cleanConfig(config);
  return mapKey?{url:`https://api.maptiler.com/maps/${mapStyle}/256/{z}/{x}/{y}.png?key=${encodeURIComponent(mapKey)}`,maxZoom:19,crossOrigin:true,attribution:'<a href="https://www.maptiler.com/copyright/">© MapTiler</a> · <a href="https://www.openstreetmap.org/copyright">© OpenStreetMap contributors</a>'}:{url:'https://tile.openstreetmap.org/{z}/{x}/{y}.png',maxZoom:19,attribution:'© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap contributors</a>'};
 }
-export function searchURL(query,{key,country,proximity}={}){
+export function searchURL(query,{key,country,proximity,language='ko'}={}){
  if(!key)throw new Error('MapTiler 키가 설정되지 않았습니다.');
  const q=String(query||'').trim();if(q.length<2||q.length>200||!COUNTRY_CODES[country])throw new Error('국가와 검색어를 확인해 주세요.');
  const url=new URL(`https://api.maptiler.com/geocoding/${encodeURIComponent(q)}.json`);
- url.search=new URLSearchParams({key,country:COUNTRY_CODES[country],language:'ko',limit:'8',autocomplete:'true'});
+ url.search=new URLSearchParams({key,country:COUNTRY_CODES[country],language:['ko','en','zh'].includes(language)?language:'ko',limit:'8',autocomplete:'true'});
  if(Array.isArray(proximity)&&proximity.length===2&&proximity.every(Number.isFinite)&&Math.abs(proximity[0])<=180&&Math.abs(proximity[1])<=90)url.searchParams.set('proximity',proximity.join(','));
  return url;
 }
