@@ -81,13 +81,13 @@ export function edgeExposure(scene,graph,edge,epoch,mode='walk'){
   // floor/layer are not metres. Never substitute guessed heights on a bridge.
   const height=a.level==='ground'&&b.level==='ground'?0:null;
   for(let i=0;i<samples;i++){const t=(i+.5)/samples,at=epoch+duration*t*60000,c=[a.coordinate[0]+(b.coordinate[0]-a.coordinate[0])*t,a.coordinate[1]+(b.coordinate[1]-a.coordinate[1])*t];
-    const solar=scene.sun(at);let state=solar.up<=0?'night':edge.covered?'unknown':classifyPoint(scene,c,at,{height,solar});counts[state]++;
+    const solar=scene.sun(at);let state=solar.up<=0?'night':edge.sheltered?'shade':edge.covered?'unknown':classifyPoint(scene,c,at,{height,solar});counts[state]++;
   }
   return Object.fromEntries(Object.entries(counts).map(([key,count])=>[key,duration*count/samples]));
 }
 export function evaluateRoute(scene,graph,route,epoch,mode){
   const total={sun:0,shade:0,unknown:0,night:0};let elapsed=0;
-  const segments=route.segments.map(segment=>{const edge=graph.adj.get(segment.from).find(e=>e.id===segment.id),exposure=edgeExposure(scene,graph,edge,epoch+elapsed*60000,mode);for(const key of Object.keys(total))total[key]+=exposure[key];elapsed+=segment.duration;return {...segment,exposure};});
+  const segments=route.segments.map(segment=>{const edge=graph.adj.get(segment.from).find(e=>e.id===segment.id),exposure=edgeExposure(scene,graph,{...edge,duration:segment.duration},epoch+elapsed*60000,mode);for(const key of Object.keys(total))total[key]+=exposure[key];elapsed+=segment.duration;return {...segment,exposure};});
   return {...route,segments,exposure:{...total,assessedFraction:route.duration?Math.max(0,Math.min(1,(total.sun+total.shade+total.night)/route.duration)):1},departure:epoch};
 }
 

@@ -75,3 +75,13 @@ test('structural endpoints connect shared OSM bridge approaches without inventin
  assert.throws(()=>route(g,'1@ground','5@floor:1'),/연결된 경로/);
  const crossing=prepareGraph(importOSM({elements:[node(1,0,0),node(2,2,0),node(3,1,-1),node(4,1,1),way(10,[1,2]),way(11,[3,4],{bridge:'yes',layer:'1'})]},{connectStructuralEndpoints:true}));assert.throws(()=>route(crossing,'1@ground','4@layer:1'),/연결된 경로/);
 });
+
+test('Hong Kong underground corridors connect through mapped stairs and directional escalators',()=>{
+ const elements=[node(1,0,0),node(2,1,0),node(3,1,0),node(4,2,0),node(5,2,0),node(6,3,0),way(10,[1,2]),way(11,[2,3],{highway:'steps',conveying:'forward'}),way(12,[3,4],{highway:'corridor',level:'-1',tunnel:'yes'}),way(13,[4,5],{highway:'steps'}),way(14,[5,6])];
+ const g=prepareGraph(importOSM({elements},{connectStructuralEndpoints:true}));
+ const r=route(g,'1@ground','6@ground');
+ assert(r.segments.some(e=>e.kind==='tunnel'&&e.covered));
+ assert.equal(r.segments.filter(e=>e.kind==='steps').length,2);
+ assert.throws(()=>route(g,'6@ground','1@ground'),/연결된 경로/);
+ assert.throws(()=>route(g,'1@ground','6@ground',{mode:'bike'}),/연결된 경로/);
+});

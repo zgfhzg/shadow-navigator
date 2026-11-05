@@ -1,13 +1,13 @@
 import {distance} from './engine.mjs';
 export const cellKey=(p,step=.005)=>`${Math.floor(p[0]/step)},${Math.floor(p[1]/step)}`;
-const kinds=flags=>flags&4?'steps':flags&8?'elevator':flags&32?'bridge':flags&64?'indoor':'road';
+const kinds=flags=>flags&4?'steps':flags&8?'elevator':flags&32?'bridge':flags&64?'indoor':flags&128?'tunnel':'road';
 export function decodeCompact(manifest,nodeBuffer,edgeBuffer){
  const arrays={};for(const [name,spec]of Object.entries(manifest.arrays)){const T=globalThis[spec.type];if(!['Int32Array','Uint32Array','Uint16Array','Uint8Array','Float32Array','Float64Array'].includes(spec.type))throw new Error('Unsupported compact graph array');arrays[name]=new T(spec.file==='nodes'?nodeBuffer:edgeBuffer,spec.offset,spec.length);}
  const g={manifest,...arrays};if(g.xy.length!==manifest.nodes*2||g.offsets.length!==manifest.nodes+1||g.to.length!==manifest.edges)throw new Error('Incomplete compact road data');
  g.id=i=>`hk2:${manifest.revision}:${i}`;
  g.index=id=>{const prefix=`hk2:${manifest.revision}:`;if(typeof id!=='string'||!id.startsWith(prefix))return -1;const raw=id.slice(prefix.length);if(!/^(0|[1-9]\d*)$/.test(raw))return -1;const i=Number(raw);return Number.isInteger(i)&&i>=0&&i<manifest.nodes?i:-1;};
  g.point=i=>[g.xy[i*2]/1e7,g.xy[i*2+1]/1e7];
- g.edge=(j,from)=>({id:`e:${j}`,from:g.id(from),to:g.id(g.to[j]),wayId:g.ways[j],name:manifest.names[g.names[j]]||'',kind:kinds(g.flags[j]),covered:!!(g.flags[j]&16),distance:g.lengths[j],modes:[...(g.flags[j]&1?['walk']:[]),...(g.flags[j]&2?['bike']:[])]});
+ g.edge=(j,from)=>({id:`e:${j}`,from:g.id(from),to:g.id(g.to[j]),wayId:g.ways[j],name:manifest.names[g.names[j]]||'',kind:kinds(g.flags[j]),covered:!!(g.flags[j]&16),sheltered:!!(g.flags[j]&16)&&!!(g.flags[j]&(64|128)),distance:g.lengths[j],modes:[...(g.flags[j]&1?['walk']:[]),...(g.flags[j]&2?['bike']:[])]});
  g.nodes={size:manifest.nodes,has:id=>g.index(id)>=0,get:id=>{const i=g.index(id);return i<0?undefined:{id,coordinate:g.point(i),level:manifest.levels[g.levels[i]]};}};
  g.adj={get:id=>{const i=g.index(id);return i<0?[]:Array.from({length:g.offsets[i+1]-g.offsets[i]},(_,n)=>g.edge(g.offsets[i]+n,i));}};
  g.data={source:manifest.source,bounds:manifest.bounds,warnings:manifest.warnings};

@@ -5,6 +5,10 @@ export const getLanguage=()=>language;
 export function setLanguage(value){if(!Object.hasOwn(languages,value))return false;language=value;try{localStorage.setItem('shadow-language',value);}catch{}return true;}
 // Complete messages and numbered slots, rather than word substitution.
 export const messages=[
+['홍콩의 지하 통로와 고가 보행교는 공개 지도에 연결이 기록된 구간을 안내합니다. 운영 시간과 현장 출입 제한을 확인해 주세요.','Hong Kong routes use underground passages and elevated walkways where connections are mapped. Check opening hours and access restrictions on site.','香港路線採用公開地圖上有連接紀錄嘅地底通道同行人天橋。請留意開放時間同現場通行限制。'],
+['지하 통로','Underground passage','地底通道'],
+['고가 보행교','Elevated walkway','行人天橋'],
+['실내 통로','Indoor passage','室內通道'],
 ["인근 보행로 기준","Nearby path","以附近行人路為準"],
 ["인근 보행로","Nearby path","附近行人路"],
 ["{0} 저장된 장소·거리 검색 결과를 표시합니다.","{0} Showing saved places and streets.","{0} 現顯示已儲存嘅地點同街道。"],

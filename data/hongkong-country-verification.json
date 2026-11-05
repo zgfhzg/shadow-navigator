@@ -1,7 +1,7 @@
 {
-  "verifiedAt": "2026-10-17T08:45:44.669Z",
-  "nodes": 1049223,
-  "edges": 2189931,
+  "verifiedAt": "2026-11-05T02:00:54.016Z",
+  "nodes": 1047307,
+  "edges": 2186751,
   "source": {
     "name": "OpenStreetMap",
     "license": "ODbL-1.0",
@@ -1139,6 +1139,18 @@
   },
   "disconnectedHarbourCrossing": "correctly rejected",
   "isolatedSaiKungFootpath": "correctly rejected; no invented connector",
+  "passageChecks": [
+    {
+      "area": "Admiralty",
+      "kind": "bridge",
+      "meters": 82
+    },
+    {
+      "area": "Tsim Sha Tsui",
+      "kind": "tunnel",
+      "meters": 427
+    }
+  ],
   "reports": [
     {
       "area": "Hong Kong Island",
@@ -1155,8 +1167,8 @@
         6.74672792853593
       ],
       "distance": 5182.387143969536,
-      "seconds": 2.152332792,
-      "visited": 17773,
+      "seconds": 2.066808625,
+      "visited": 17842,
       "routes": [
         {
           "kind": "fast",
@@ -1164,23 +1176,23 @@
           "duration": 69.3288842185338,
           "exposure": {
             "sun": 17.401867423057553,
-            "shade": 45.05891506777871,
-            "unknown": 6.868101727697583,
+            "shade": 46.23386203077105,
+            "unknown": 5.693154764705233,
             "night": 0,
-            "assessedFraction": 0.9009344834391338
+            "assessedFraction": 0.9178819213827296
           },
           "searchLimited": false
         },
         {
           "kind": "balanced",
-          "distance": 5339.422864973545,
-          "duration": 71.40102661848061,
+          "distance": 5291.859542012215,
+          "duration": 70.78851619243618,
           "exposure": {
-            "sun": 13.28733018186357,
-            "shade": 52.552215359475895,
-            "unknown": 5.561481077141232,
+            "sun": 12.812364532152808,
+            "shade": 52.243740447892094,
+            "unknown": 5.732411212391322,
             "night": 0,
-            "assessedFraction": 0.9221092281087498
+            "assessedFraction": 0.9190206050257091
           },
           "searchLimited": false
         },
@@ -1214,8 +1226,8 @@
         49.812362030922145
       ],
       "distance": 3510.4271360635757,
-      "seconds": 0.464247625,
-      "visited": 3893,
+      "seconds": 0.4405504579999997,
+      "visited": 3889,
       "routes": [
         {
           "kind": "fast",
@@ -1273,8 +1285,8 @@
         3.0097235819455146
       ],
       "distance": 2558.2792147397995,
-      "seconds": 1.19091525,
-      "visited": 750,
+      "seconds": 1.1965832500000002,
+      "visited": 748,
       "routes": [
         {
           "kind": "fast",
@@ -1332,8 +1344,8 @@
         3.9295587192126398
       ],
       "distance": 1942.5022931098938,
-      "seconds": 0.40798562500000024,
-      "visited": 2477,
+      "seconds": 0.39652170799999975,
+      "visited": 2501,
       "routes": [
         {
           "kind": "fast",
@@ -1350,27 +1362,27 @@
         },
         {
           "kind": "balanced",
-          "distance": 2108.6135316491127,
-          "duration": 28.114847088654844,
+          "distance": 2278.444588840008,
+          "duration": 30.37926118453345,
           "exposure": {
-            "sun": 8.005475445853337,
-            "shade": 11.203469073507522,
-            "unknown": 8.905902569293973,
+            "sun": 6.305808043479918,
+            "shade": 15.65847185505761,
+            "unknown": 8.414981285995903,
             "night": 0,
-            "assessedFraction": 0.6832313353435319
+            "assessedFraction": 0.723002437917084
           },
           "searchLimited": false
         },
         {
           "kind": "shade",
-          "distance": 2314.9155265688896,
-          "duration": 30.865540354251873,
+          "distance": 2278.444588840008,
+          "duration": 30.37926118453345,
           "exposure": {
-            "sun": 6.720459132194518,
-            "shade": 15.554404054747687,
-            "unknown": 8.590677167309654,
+            "sun": 6.305808043479918,
+            "shade": 15.65847185505761,
+            "unknown": 8.414981285995903,
             "night": 0,
-            "assessedFraction": 0.7216741690340678
+            "assessedFraction": 0.723002437917084
           },
           "searchLimited": false
         }
@@ -1391,8 +1403,8 @@
         1.6743831716213464
       ],
       "distance": 1495.9613662660122,
-      "seconds": 0.32385525000000054,
-      "visited": 1085,
+      "seconds": 0.2760239579999998,
+      "visited": 1060,
       "routes": [
         {
           "kind": "fast",
@@ -1400,36 +1412,36 @@
           "duration": 20.23433474342029,
           "exposure": {
             "sun": 10.910639392137528,
-            "shade": 2.4292227564917668,
-            "unknown": 6.894472594790989,
+            "shade": 2.82095328119066,
+            "unknown": 6.502742070092096,
             "night": 0,
-            "assessedFraction": 0.6592686301667066
+            "assessedFraction": 0.6786283239577898
           },
           "searchLimited": false
         },
         {
           "kind": "balanced",
-          "distance": 1550.849654763937,
-          "duration": 20.966178590059283,
+          "distance": 1623.0062690675259,
+          "duration": 21.9282667807738,
           "exposure": {
-            "sun": 12.078343106508255,
-            "shade": 5.3189793703291155,
-            "unknown": 3.56885611322191,
+            "sun": 11.308791892925898,
+            "shade": 8.415391028722127,
+            "unknown": 2.2040838591257725,
             "night": 0,
-            "assessedFraction": 0.8297803246360775
+            "assessedFraction": 0.8994866360774912
           },
           "searchLimited": false
         },
         {
           "kind": "shade",
-          "distance": 1596.7891238629818,
-          "duration": 21.57870484471321,
+          "distance": 1623.0062690675259,
+          "duration": 21.9282667807738,
           "exposure": {
-            "sun": 12.131240486701328,
-            "shade": 6.215138408872816,
-            "unknown": 3.232325949139065,
+            "sun": 11.308791892925898,
+            "shade": 8.415391028722127,
+            "unknown": 2.2040838591257725,
             "night": 0,
-            "assessedFraction": 0.8502076017814856
+            "assessedFraction": 0.8994866360774912
           },
           "searchLimited": false
         }
@@ -1450,8 +1462,8 @@
         12.515222239792305
       ],
       "distance": 2526.6633882522583,
-      "seconds": 0.7738322500000003,
-      "visited": 4913,
+      "seconds": 0.7033835830000007,
+      "visited": 4891,
       "routes": [
         {
           "kind": "fast",
@@ -1481,14 +1493,14 @@
         },
         {
           "kind": "shade",
-          "distance": 2938.7834182977676,
-          "duration": 39.18377891063693,
+          "distance": 2842.7651581168175,
+          "duration": 38.38012326478962,
           "exposure": {
-            "sun": 11.170084730784094,
-            "shade": 25.56054018285539,
-            "unknown": 2.4531539969974094,
+            "sun": 10.786562099456782,
+            "shade": 25.480085291597582,
+            "unknown": 2.1134758737352155,
             "night": 0,
-            "assessedFraction": 0.9373936341721368
+            "assessedFraction": 0.9449330618571988
           },
           "searchLimited": false
         }
@@ -1509,8 +1521,8 @@
         95.67033894463479
       ],
       "distance": 3103.9008761942387,
-      "seconds": 1.6921323329999995,
-      "visited": 8981,
+      "seconds": 1.363094709,
+      "visited": 9023,
       "routes": [
         {
           "kind": "fast",
@@ -1531,23 +1543,23 @@
           "duration": 45.85154816865921,
           "exposure": {
             "sun": 18.869286061657796,
-            "shade": 13.312494866583073,
-            "unknown": 13.669767240418329,
+            "shade": 14.006176583502022,
+            "unknown": 12.976085523499384,
             "night": 0,
-            "assessedFraction": 0.7018690145393608
+            "assessedFraction": 0.7169978759328152
           },
           "searchLimited": false
         },
         {
           "kind": "shade",
-          "distance": 3365.415176689625,
-          "duration": 45.85154816865921,
+          "distance": 3381.9642307162285,
+          "duration": 46.072202222347244,
           "exposure": {
-            "sun": 18.869286061657796,
-            "shade": 13.312494866583073,
-            "unknown": 13.669767240418329,
+            "sun": 18.448554014364873,
+            "shade": 14.339714605013523,
+            "unknown": 13.28393360296885,
             "night": 0,
-            "assessedFraction": 0.7018690145393608
+            "assessedFraction": 0.7116713991907794
           },
           "searchLimited": false
         }
@@ -1568,8 +1580,8 @@
         5.109748185059531
       ],
       "distance": 3286.0381346940994,
-      "seconds": 2.2034458749999994,
-      "visited": 8896,
+      "seconds": 2.122477,
+      "visited": 8862,
       "routes": [
         {
           "kind": "fast",
@@ -1627,8 +1639,8 @@
         3.9075095905375195
       ],
       "distance": 7047.833135277033,
-      "seconds": 0.5538219580000004,
-      "visited": 8268,
+      "seconds": 0.5094443339999998,
+      "visited": 8399,
       "routes": [
         {
           "kind": "fast",
@@ -1636,36 +1648,36 @@
           "duration": 93.97110847036045,
           "exposure": {
             "sun": 67.11681162688467,
-            "shade": 1.2711568819151986,
-            "unknown": 25.583139961560576,
+            "shade": 3.585048342016008,
+            "unknown": 23.269248501459757,
             "night": 0,
-            "assessedFraction": 0.7277552603348316
+            "assessedFraction": 0.7523786951092616
           },
           "searchLimited": false
         },
         {
           "kind": "balanced",
-          "distance": 7072.40593829751,
-          "duration": 94.29874584396681,
+          "distance": 7091.946659475565,
+          "duration": 94.55928879300755,
           "exposure": {
-            "sun": 63.02663383179237,
-            "shade": 8.852268472247655,
-            "unknown": 22.419843539926752,
+            "sun": 63.03550987839695,
+            "shade": 9.681116540696886,
+            "unknown": 21.84266237391367,
             "night": 0,
-            "assessedFraction": 0.7622466413601704
+            "assessedFraction": 0.7690056402419883
           },
           "searchLimited": false
         },
         {
           "kind": "shade",
-          "distance": 7072.40593829751,
-          "duration": 94.29874584396681,
+          "distance": 7091.946659475565,
+          "duration": 94.55928879300755,
           "exposure": {
-            "sun": 63.02663383179237,
-            "shade": 8.852268472247655,
-            "unknown": 22.419843539926752,
+            "sun": 63.03550987839695,
+            "shade": 9.681116540696886,
+            "unknown": 21.84266237391367,
             "night": 0,
-            "assessedFraction": 0.7622466413601704
+            "assessedFraction": 0.7690056402419883
           },
           "searchLimited": false
         }
@@ -1686,7 +1698,7 @@
         51.86014087465664
       ],
       "distance": 4783.030275225639,
-      "seconds": 0.17593670799999928,
+      "seconds": 0.14600329200000123,
       "visited": 2506,
       "routes": [
         {
@@ -1745,7 +1757,7 @@
         0.8305900011535872
       ],
       "distance": 551.5166628360748,
-      "seconds": 0.1514182920000003,
+      "seconds": 0.12951820800000133,
       "visited": 112,
       "routes": [
         {
@@ -1804,7 +1816,7 @@
         148.23812364660301
       ],
       "distance": 257.28595012426376,
-      "seconds": 0.006499625000000378,
+      "seconds": 0.005497166999999536,
       "visited": 21,
       "routes": [
         {
@@ -1863,8 +1875,8 @@
         0
       ],
       "distance": 1059.962135732174,
-      "seconds": 0.3276665830000002,
-      "visited": 1161,
+      "seconds": 0.31982095899999874,
+      "visited": 1168,
       "routes": [
         {
           "kind": "fast",

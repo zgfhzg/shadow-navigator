@@ -13,6 +13,8 @@ function access(tags,mode,highway) {
   // Hong Kong defaults are conservative: pedestrian paths require explicit bicycle permission.
   return streets.has(highway)||highway==='cycleway';
 }
+const isTunnel=t=>t.tunnel==='yes';
+const isIndoor=t=>t.indoor==='yes'||t.indoor==='corridor'||t.highway==='corridor';
 function context(tags) {
   if(tags.level!==undefined){const levels=tags.level.split(';').map(s=>s.trim());return levels.map(l=>/^-?\d+(\.\d+)?$/.test(l)?(Number(l)===0?'ground':`floor:${Number(l)}`):'invalid');}
   if(tags.layer&&tags.layer!=='0')return [`layer:${tags.layer}`];
@@ -28,9 +30,9 @@ export function importOSM(osm,{city='hongkong',bounds=null,connectStructuralEndp
   function add(a,b,way,tags,modes,kind){
     if(!modes.length)return;
     const oneBike=tags['oneway:bicycle']??tags.oneway??(tags.junction==='roundabout'?'yes':'no');
-    const oneWalk=tags['oneway:foot']??'no';
+    const oneWalk=tags.conveying==='forward'?'yes':tags.conveying==='backward'?'-1':tags['oneway:foot']??'no';
     const allowed=(reverse)=>modes.filter(mode=>{const one=mode==='bike'?oneBike:oneWalk;return !((one==='yes'||one==='1'||one==='true')&&reverse)&&!(one==='-1'&&!reverse);});
-    const props={wayId:way.id,name:tags.name||tags['name:en']||'',kind,covered:tags.covered==='yes'||tags.tunnel==='building_passage'||tags.indoor==='yes',distance:distance(nodes.get(a).coordinate,nodes.get(b).coordinate)};
+    const props={wayId:way.id,name:tags.name||tags['name:en']||'',kind,covered:tags.covered==='yes'||tags.tunnel==='building_passage'||tags.indoor==='yes'||connectStructuralEndpoints&&(isTunnel(tags)||isIndoor(tags)),distance:distance(nodes.get(a).coordinate,nodes.get(b).coordinate)};
     for(const [from,to,reverse]of [[a,b,false],[b,a,true]]){const permitted=allowed(reverse);if(permitted.length)edges.push({...props,id:`${way.id}:${edges.length}`,from,to,modes:permitted});}
   }
   const endpointLevels=new Map();
@@ -40,7 +42,8 @@ export function importOSM(osm,{city='hongkong',bounds=null,connectStructuralEndp
   }
   for(const way of osm.elements.filter(e=>e.type==='way')){
     const t=way.tags||{},highway=t.highway;
-    if(!highway||t.area==='yes'||t.construction||(t.conveying&&t.conveying!=='no')||!way.nodes?.length){audit.excludedWays++;continue;}
+    const escalator=connectStructuralEndpoints&&highway==='steps'&&['forward','backward'].includes(t.conveying);
+    if(!highway||t.area==='yes'||t.construction||(t.conveying&&t.conveying!=='no'&&!escalator)||!way.nodes?.length){audit.excludedWays++;continue;}
     if(way.nodes.some(id=>!rawNodes.has(id))){audit.missingNodeWays++;continue;}
     const modes=['walk','bike'].filter(m=>access(t,m,highway));if(!modes.length){audit.excludedWays++;continue;}
     const levels=context(t),vertical=['steps','elevator'].includes(highway);
@@ -53,7 +56,13 @@ export function importOSM(osm,{city='hongkong',bounds=null,connectStructuralEndp
       if(first.length!==1||last.length!==1||first[0]===last[0]){audit.ambiguousLevels++;continue;}
       transition=[first[0],last[0]];
     }
-    const kind=highway==='steps'?'steps':highway==='elevator'?'elevator':t.bridge&&t.bridge!=='no'?'bridge':t.indoor==='yes'||highway==='corridor'?'indoor':'road';
+    if(connectStructuralEndpoints&&vertical&&!transition){
+      const endpoint=id=>{const raw=rawNodes.get(id);return raw.tags?.level!==undefined?context(raw.tags):[...(endpointLevels.get(id)||[])];};
+      const first=endpoint(way.nodes[0]),last=endpoint(way.nodes.at(-1));
+      if(first.length===1&&last.length===1&&first[0]!=='invalid'&&last[0]!=='invalid'&&first[0]!==last[0]&&
+          (t.level===undefined||[first[0],last[0]].includes(levels[0])))transition=[first[0],last[0]];
+    }
+    const kind=highway==='steps'?'steps':highway==='elevator'?'elevator':t.bridge&&t.bridge!=='no'?'bridge':connectStructuralEndpoints&&isTunnel(t)?'tunnel':isIndoor(t)?'indoor':'road';
     const usable=highway==='steps'?modes.filter(m=>m==='walk'):modes;
     for(let i=1;i<way.nodes.length;i++){
       const aRaw=rawNodes.get(way.nodes[i-1]),bRaw=rawNodes.get(way.nodes[i]);
@@ -61,16 +70,17 @@ export function importOSM(osm,{city='hongkong',bounds=null,connectStructuralEndp
         const nt=n.tags||{};if(nt.barrier&&!['kerb','entrance','bollard'].includes(nt.barrier)&&!nt[m==='walk'?'foot':'bicycle'])return false;
         if(nt.access||nt.foot||nt.bicycle||Object.keys(nt).some(k=>k.endsWith(':conditional')))return access(nt,m,highway);return true;
       }));
-      const fromLevel=transition?.[0]||levels[0],toLevel=transition&&i===way.nodes.length-1?transition[1]:fromLevel;
+      const at=index=>!transition?levels[0]:index===0?transition[0]:index===way.nodes.length-1?transition[1]:connectStructuralEndpoints?`connector:${way.id}`:transition[0];
+      const fromLevel=at(i-1),toLevel=at(i);
       add(node(way.nodes[i-1],fromLevel),node(way.nodes[i],toLevel),way,t,nodeAllowed,kind);
     }
-    if(vertical&&levels.length===2)audit.verticalConnectors++;audit.ways++;
+    if(transition)audit.verticalConnectors++;audit.ways++;
   }
   // layer describes grade separation, not a storey. Shared OSM nodes at the
   // actual ends of a bridge/tunnel connect to its ground approach. Never merge
   // geometric crossings, bridge midpoints, explicit floors or private paths.
   if(connectStructuralEndpoints){
-    const incident=new Map();for(const e of edges)for(const id of [e.from,e.to]){if(!incident.has(id))incident.set(id,new Set());for(const m of e.modes)incident.get(id).add(m);}
+    const incident=new Map(),structural=new Map();for(const e of edges)for(const id of [e.from,e.to]){if(!incident.has(id))incident.set(id,new Set());for(const m of e.modes)incident.get(id).add(m);if(e.kind==='bridge'||e.kind==='tunnel'||e.covered){const key=e.wayId+'|'+id;if(!structural.has(key))structural.set(key,new Set());for(const m of e.modes)structural.get(key).add(m);}}
     const connected=new Set();audit.structuralConnections=0;
     for(const way of osm.elements.filter(e=>e.type==='way')){const t=way.tags||{};
       if(t.level!==undefined||!((t.bridge&&t.bridge!=='no')||(t.tunnel&&t.tunnel!=='no'))||!way.nodes?.length)continue;
@@ -79,9 +89,9 @@ export function importOSM(osm,{city='hongkong',bounds=null,connectStructuralEndp
         if(rawNodes.get(rawId)?.tags?.level!==undefined)continue;
         const elevated=`${rawId}@${contexts[0]}`,ground=`${rawId}@ground`,key=elevated+'|'+ground;
         if(connected.has(key)||!nodes.has(elevated)||!nodes.has(ground))continue;
-        const modes=['walk','bike'].filter(m=>incident.get(elevated)?.has(m)&&incident.get(ground)?.has(m));if(!modes.length)continue;
+        const modes=['walk','bike'].filter(m=>structural.get(way.id+'|'+elevated)?.has(m)&&incident.get(ground)?.has(m));if(!modes.length)continue;
         // Restrict the junction to modes already admitted by both adjoining ways.
-        for(const [from,to]of [[ground,elevated],[elevated,ground]])edges.push({id:`structural:${edges.length}`,from,to,wayId:way.id,name:'',kind:'bridge',covered:false,distance:0,modes});
+        for(const [from,to]of [[ground,elevated],[elevated,ground]])edges.push({id:`structural:${edges.length}`,from,to,wayId:way.id,name:'',kind:t.bridge&&t.bridge!=='no'?'bridge':isTunnel(t)?'tunnel':'road',covered:false,distance:0,modes});
         connected.add(key);audit.structuralConnections++;
       }
     }

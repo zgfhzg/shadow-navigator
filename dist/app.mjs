@@ -94,6 +94,7 @@ for(const id of ['origin','destination']){
 document.addEventListener('click',event=>{for(const id of ['origin','destination'])if(!$(id).parentElement.contains(event.target))hideOptions(id);});
 function text(tag,value,className){const e=document.createElement(tag);e.textContent=value;if(className)e.className=className;return e;}
 const titles={shade:'그늘 우선',balanced:'균형 경로',fast:'최단 시간'};
+const passageLabels={tunnel:'지하 통로',bridge:'고가 보행교',indoor:'실내 통로'};
 function renderRoutes(){
   $('routes').replaceChildren();$('result-count').textContent=`${state.routes.length} ROUTES`;
   const order=['shade','balanced','fast'];
@@ -103,7 +104,7 @@ function renderRoutes(){
     if(e)stats.append(text('span',e.night>=r.duration*.99?'직사광선 없음':`그늘 약 ${e.shade.toFixed(1)}분`,'shade-stat'));
     const bar=document.createElement('div');bar.className='shade-bar';if(e)for(const key of ['shade','sun','unknown','night']){const span=document.createElement('span');span.className='exposure-'+key;span.style.width=`${r.duration?100*e[key]/r.duration:0}%`;bar.append(span);}
     const bottom=document.createElement('div');bottom.className='card-bottom';bottom.append(text('span',e?`햇빛 ${e.sun.toFixed(1)}분 · 평가 불가 ${e.unknown.toFixed(1)}분`:'그늘 정보 준비 중'),text('span',`${arrivalLabel(r.departure??clock.epoch,r.duration,clock.timeZone)} 도착`));
-    button.append(top,stats,bar,bottom);if(r.searchLimited)button.append(text('p','계산량 제한으로 이 후보는 최단 경로를 사용했어요.','coverage'));if(e&&e.unknown>.05)button.append(text('p',`전체 시간 중 ${Math.round(e.assessedFraction*100)}%에서 햇빛·그늘을 평가할 수 있어요.`,'coverage'));
+    button.append(top,stats,bar,bottom);for(const [kind,label] of Object.entries(passageLabels))if(r.countrywide&&r.segments?.some(s=>s.kind===kind&&s.distance>0))button.append(text('span',label,'passage-badge'));if(r.searchLimited)button.append(text('p','계산량 제한으로 이 후보는 최단 경로를 사용했어요.','coverage'));if(e&&e.unknown>.05)button.append(text('p',`전체 시간 중 ${Math.round(e.assessedFraction*100)}%에서 햇빛·그늘을 평가할 수 있어요.`,'coverage'));
     button.onclick=()=>{state.kind=kind;renderRoutes();drawRoute(false);};$('routes').append(button);
   }
 }
@@ -111,6 +112,13 @@ function drawRoute(fit=true){
   routeLayer.clearLayers();const selected=state.routes.find(r=>r.kind===state.kind)||state.routes[0];if(!selected)return;
   for(const r of state.routes.filter(r=>r!==selected))L.polyline(r.geometry.coordinates.map(([lon,lat])=>[lat,lon]),{color:'#8ca6dd',weight:3,opacity:.45}).addTo(routeLayer);
   const points=selected.geometry.coordinates.map(([lon,lat])=>[lat,lon]);L.polyline(points,{color:'#fff',weight:9,opacity:.95}).addTo(routeLayer);L.polyline(points,{color:'#3563f3',weight:5,opacity:1}).addTo(routeLayer);drawPins();
+  if(selected.countrywide&&selected.segments?.length===points.length-1){
+    const colors={tunnel:'#743dcc',bridge:'#00836f',indoor:'#743dcc'};
+    selected.segments.forEach((segment,index)=>{if(colors[segment.kind]&&segment.distance>0){
+      const label=text('span',passageLabels[segment.kind]);
+      L.polyline(points.slice(index,index+2),{color:colors[segment.kind],weight:6,dashArray:segment.kind==='bridge'?undefined:'4 5'}).bindTooltip(label).addTo(routeLayer);
+    }});
+  }
   if(fit&&points.length>1)fitEverything();
   $('insight').textContent=`${titles[selected.kind]} · ${(selected.distance/1000).toFixed(2)}km`;
   const e=selected.exposure;$('insight-sub').textContent=e?e.night>=selected.duration*.99?'해가 진 시간에는 직사광선이 없어요.':`그늘 추정 ${e.shade.toFixed(1)}분 · 평가 불가 ${e.unknown.toFixed(1)}분`:'이 지역의 건물 정보를 준비하고 있어요.';
