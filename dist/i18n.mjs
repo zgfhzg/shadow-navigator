@@ -1,4 +1,11 @@
-// View-only localization keeps coordinates, routing state and provider place names intact.
+// Keep authored Cantonese as written. Normalize only Hong Kong place labels.
+let hongKongText,converterLoad;
+export function prepareLanguage(lang){
+ if(lang!=='yue'||hongKongText)return Promise.resolve();
+ return converterLoad??=import('./vendor/opencc-cn2t.mjs').then(({Converter})=>{
+  hongKongText=Converter({from:'cn',to:'hk'});
+ }).catch(()=>{converterLoad=undefined;});
+}
 export const languages={ko:{label:'한국어',tag:'ko',search:'ko'},en:{label:'English',tag:'en',search:'en'},yue:{label:'廣東話',tag:'yue-Hant-HK',search:'zh'}};
 let language='ko';try{const saved=localStorage.getItem('shadow-language');if(Object.hasOwn(languages,saved))language=saved;}catch{}
 export const getLanguage=()=>language;
@@ -62,7 +69,11 @@ export function translate(value,lang=language,depth=0){
  for(const {row,slots,regex} of rules){const match=value.match(regex);if(match){const args={};slots.forEach((slot,i)=>args[slot]=translate(match[i+1],lang,depth+1));return row[index].replace(/\{(\d+)\}/g,(_,slot)=>args[slot]);}}
  return value;
 }
-export function placeLabel(place,lang=language){
+export function placeLabel(place,lang=language,country='hongkong'){
+ const label=rawPlaceLabel(place,lang);
+ return lang==='yue'&&country==='hongkong'&&hongKongText&&/\p{Script=Han}/u.test(label)?hongKongText(label):label;
+}
+function rawPlaceLabel(place,lang){
  const label=place?.label||'';if(lang==='ko'||place?.source==='maptiler'||!/[가-힣]/.test(label))return translate(label,lang);
  const terms=Array.isArray(place.terms)?place.terms:[];
  const original=terms.find(term=>!/[가-힣]/.test(term)&&/[\p{Script=Han}]/u.test(term));
@@ -84,6 +95,12 @@ export function installLanguageUI(doc=document){
  const apply=()=>{doc.documentElement.lang=languages[language].tag;selector.value=language;visit(doc);};
  const observer=new MutationObserver(changes=>{for(const change of changes){if(change.type==='childList')for(const node of change.addedNodes)visit(node);else visit(change.target);}});
  observer.observe(doc.documentElement,{subtree:true,childList:true,characterData:true,attributes:true,attributeFilter:attributes});
- selector.addEventListener('change',()=>{setLanguage(selector.value);apply();doc.dispatchEvent(new CustomEvent('languagechange',{detail:{language}}));});apply();
+ let selection=0;
+ selector.addEventListener('change',async()=>{
+  const next=selector.value,request=++selection;
+  await prepareLanguage(next);
+  if(request!==selection||!setLanguage(next))return;
+  apply();doc.dispatchEvent(new CustomEvent('languagechange',{detail:{language}}));
+ });apply();
  return {apply,disconnect:()=>observer.disconnect()};
 }

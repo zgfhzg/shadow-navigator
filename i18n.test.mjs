@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {translate,placeLabel,languages,messages,setLanguage,getLanguage} from './dist/i18n.mjs';
+import {translate,placeLabel,prepareLanguage,languages,messages,setLanguage,getLanguage} from './dist/i18n.mjs';
 import {searchURL} from './dist/maptiler.mjs';
 test('language catalogs have complete slots and Hong Kong Cantonese locale',()=>{
  assert.equal(languages.yue.tag,'yue-Hant-HK');
@@ -24,4 +24,14 @@ test('language selection validates values and preserves Korean fallback',()=>{
 test('search language follows selection and safely limits provider language values',()=>{
  for(const language of ['ko','en','zh'])assert.equal(searchURL('Hong Kong',{key:'test',country:'hongkong',language}).searchParams.get('language'),language);
  assert.equal(searchURL('Hong Kong',{key:'test',country:'hongkong',language:'invalid'}).searchParams.get('language'),'ko');
+});
+
+test('Cantonese normalizes mixed MapTiler and saved Hong Kong labels without rewriting Japanese names',async()=>{
+ await prepareLanguage('yue');
+ const maptiler={source:'maptiler',label:'中环街市 · 香港國際機場 · 湾仔轩尼诗道'};
+ assert.equal(placeLabel(maptiler,'yue','hongkong'),'中環街市・香港國際機場・灣仔軒尼詩道');
+ assert.equal(placeLabel({label:'센트럴',terms:['中环街市 Central Market']},'yue','hongkong'),'中環街市 Central Market');
+ assert.equal(placeLabel(maptiler,'en','hongkong'),maptiler.label);
+ assert.equal(placeLabel({label:'新宿区役所'},'yue','japan'),'新宿区役所');
+ assert.equal(translate('그늘길 찾기','yue'),'搵陰涼路線');
 });
