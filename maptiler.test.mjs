@@ -11,12 +11,25 @@ test('MapTiler config supports keyless fallback and rejects invalid injected con
  assert.equal((await readMapConfig(async()=>({ok:true,json:async()=>({mapKey:'test-key'})}))).mapKey,'test-key');
 });
 test('country-wide Unicode search is filtered by country without a pilot bounding box',async()=>{
- for(const [country,iso] of [['japan','jp'],['hongkong','hk']]){
+ for(const [country,iso] of [['japan','jp']]){
   const items=await searchMapTiler('福岡駅',{key:'test-key',country,proximity:[130.42,33.59]},async url=>{
    assert(decodeURIComponent(url.pathname).includes('福岡駅'));assert.equal(url.searchParams.get('country'),iso);assert.equal(url.searchParams.get('proximity'),'130.42,33.59');assert.equal(url.searchParams.get('language'),'ko');assert.equal(url.searchParams.has('bbox'),false);
    return {ok:true,json:async()=>({features:[{place_name:'후쿠오카역',center:[130.42,33.59],place_type:['poi']},{center:[999,0]},null]})};
   });assert.equal(items.length,1);assert.deepEqual(items[0].coordinate,[130.42,33.59]);
  }
+});
+test('Hong Kong uses the provider region and excludes neighboring mainland results',async()=>{
+ const items=await searchMapTiler('中環',{key:'test-key',country:'hongkong',language:'zh'},async url=>{
+  assert.equal(url.searchParams.get('country'),'cn');
+  assert.equal(url.searchParams.get('bbox'),regions.hongkong.bounds.join(','));
+  return {ok:true,json:async()=>({features:[
+   {text:'中環',center:[114.158,22.282],context:[{ref:'osm:r913110'}]},
+   {text:'香港',center:[114.158,22.282],properties:{ref:'osm:r913110'}},
+   {text:'深圳',center:[114.055,22.545],context:[{ref:'osm:r911844'}]},
+   {text:'Outside bounds',center:[114.5,22.6],context:[{ref:'osm:r913110'}]}
+  ]})};
+ });
+ assert.deepEqual(items.map(item=>item.label),['中環','香港']);
 });
 test('broad geocoder regions move the map rather than become an arbitrary road endpoint',async()=>{
  const items=await searchMapTiler('福岡',{key:'test-key',country:'japan'},async()=>({ok:true,json:async()=>({features:[{text:'Fukuoka',center:[130.42,33.59],place_type:['place'],bbox:[130.3,33.5,130.6,33.7]}]})}));

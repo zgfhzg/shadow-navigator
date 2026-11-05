@@ -1,5 +1,5 @@
-import {regionAt} from './regions.mjs';
-export const COUNTRY_CODES={hongkong:'hk',japan:'jp'};
+import {regionAt,regions} from './regions.mjs';
+export const COUNTRY_CODES={hongkong:'cn',japan:'jp'};
 export function cleanConfig(value={}){
  const mapKey=typeof value.mapKey==='string'?value.mapKey.trim():'';
  return {mapKey:/^[a-zA-Z0-9_-]{1,200}$/.test(mapKey)?mapKey:'',mapStyle:/^[a-zA-Z0-9_-]+$/.test(value.mapStyle||'')?value.mapStyle:'streets-v4'};
@@ -21,15 +21,25 @@ export function searchURL(query,{key,country,proximity,language='ko'}={}){
  const q=String(query||'').trim();if(q.length<2||q.length>200||!COUNTRY_CODES[country])throw new Error('국가와 검색어를 확인해 주세요.');
  const url=new URL(`https://api.maptiler.com/geocoding/${encodeURIComponent(q)}.json`);
  url.search=new URLSearchParams({key,country:COUNTRY_CODES[country],language:['ko','en','zh'].includes(language)?language:'ko',limit:'8',autocomplete:'true'});
+ if(country==='hongkong')url.searchParams.set('bbox',regions.hongkong.bounds.join(','));
  if(Array.isArray(proximity)&&proximity.length===2&&proximity.every(Number.isFinite)&&Math.abs(proximity[0])<=180&&Math.abs(proximity[1])<=90)url.searchParams.set('proximity',proximity.join(','));
  return url;
+}
+// MapTiler indexes Hong Kong under cn. The box overlaps nearby mainland
+// locations, so require the Hong Kong administrative region as well.
+function isHongKongFeature(feature){
+ const [lon,lat]=feature.center,[w,s,e,n]=regions.hongkong.bounds;
+ if(lon<w||lon>e||lat<s||lat>n)return false;
+ const context=Array.isArray(feature.context)?feature.context:[];
+ return [feature.properties,feature,...context].some(entry=>
+   entry?.ref==='osm:r913110'||entry?.id==='region.226'||entry?.country_code==='hk');
 }
 export async function searchMapTiler(query,options,fetcher=fetch){
  const url=searchURL(query,options);let response;
  try{response=await fetcher(url,{signal:options.signal||AbortSignal.timeout(10000)});}catch(e){if(e.name==='AbortError')throw e;throw new Error('MapTiler 검색에 연결하지 못했어요.');}
  if(!response.ok)throw new Error(response.status===401||response.status===403?'MapTiler 키 또는 허용 도메인을 확인해 주세요.':response.status===429?'MapTiler 검색 사용량 한도에 도달했어요.':'MapTiler 검색을 사용할 수 없어요.');
  let data;try{data=await response.json();}catch{throw new Error('MapTiler 검색 응답을 읽지 못했어요.');}
- return (Array.isArray(data?.features)?data.features:[]).filter(f=>f&&Array.isArray(f.center)&&f.center.length===2&&f.center.every(Number.isFinite)&&Math.abs(f.center[0])<=180&&Math.abs(f.center[1])<=90).map(f=>({source:'maptiler',label:String(f.place_name||f.text||'검색한 장소'),coordinate:f.center,placeType:Array.isArray(f.place_type)?f.place_type:[],type:(Array.isArray(f.place_type)?f.place_type:[]).some(t=>['country','region','subregion','place','locality'].includes(t))?'area':'place',bbox:Array.isArray(f.bbox)&&f.bbox.length===4&&f.bbox.every(Number.isFinite)&&f.bbox[0]<f.bbox[2]&&f.bbox[1]<f.bbox[3]&&Math.abs(f.bbox[0])<=180&&Math.abs(f.bbox[2])<=180&&Math.abs(f.bbox[1])<=90&&Math.abs(f.bbox[3])<=90?f.bbox:undefined}));
+ return (Array.isArray(data?.features)?data.features:[]).filter(f=>f&&Array.isArray(f.center)&&f.center.length===2&&f.center.every(Number.isFinite)&&Math.abs(f.center[0])<=180&&Math.abs(f.center[1])<=90&&(options.country!=='hongkong'||isHongKongFeature(f))).map(f=>({source:'maptiler',label:String(f.place_name||f.text||'검색한 장소'),coordinate:f.center,placeType:Array.isArray(f.place_type)?f.place_type:[],type:(Array.isArray(f.place_type)?f.place_type:[]).some(t=>['country','region','subregion','place','locality'].includes(t))?'area':'place',bbox:Array.isArray(f.bbox)&&f.bbox.length===4&&f.bbox.every(Number.isFinite)&&f.bbox[0]<f.bbox[2]&&f.bbox[1]<f.bbox[3]&&Math.abs(f.bbox[0])<=180&&Math.abs(f.bbox[2])<=180&&Math.abs(f.bbox[1])<=90&&Math.abs(f.bbox[3])<=90?f.bbox:undefined}));
 }
 export async function connectPlace(place,{country,available,mode,snap}){
  const city=regionAt(place.coordinate,country,available);
