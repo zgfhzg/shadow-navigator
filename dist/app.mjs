@@ -1,3 +1,4 @@
+import {shadeSurface} from './shade-surface.mjs';
 import {searchHongKong,mergePlaceResults} from './hongkong-search.mjs';
 import {installLanguageUI,getLanguage,languages,translate,placeLabel,prepareLanguage} from './i18n.mjs';
 await prepareLanguage(getLanguage());
@@ -18,6 +19,8 @@ let regionVersion=0,routeVersion=0,shadeVersion=0,timeTimer,timeRecalcWanted=fal
 window.addEventListener('routing-progress',event=>{if(state.pendingRoute)$('route-status').textContent=event.detail;});
 const map=L.map('map',{zoomControl:false,preferCanvas:true,attributionControl:true}).setView([22.2819,114.1589],16);
 map.attributionControl.setPrefix(false);
+map.createPane('shade-surface');map.getPane('shade-surface').style.zIndex='350';map.getPane('shade-surface').style.pointerEvents='none';
+const shadeRenderer=L.canvas({pane:'shade-surface',padding:.2});
 const buildingCredit='<a href="https://www.landsd.gov.hk/"><img src="./vendor/landsd-logo.svg" alt="Lands Department" style="height:18px;max-width:95px;vertical-align:middle;margin-right:4px"></a>Buildings: <a href="https://portal.csdi.gov.hk/csdi-webpage/dataset/landsd_rcd_1637211194312_35158">© HKSAR Government · Lands Department / CSDI</a>';map.attributionControl.addAttribution(buildingCredit);
 const baseOptions=tileOptions(mapAccess?mapConfig:{});
 let tiles=L.tileLayer(baseOptions.url,{...baseOptions,keepBuffer:1}).addTo(map);
@@ -45,7 +48,8 @@ function displayClock(){
 function viewBounds(){const b=map.getBounds();return [b.getWest(),b.getSouth(),b.getEast(),b.getNorth()];}
 async function refreshShade(){const version=++shadeVersion,region=regionVersion;shadeLayer.clearLayers();if(!state.ready||state.city==='hongkong'&&map.getZoom()<15)return;
   try{const snapshot=await api('/api/shade',{city:state.city,bounds:JSON.stringify(viewBounds()),departure:new Date(clock.epoch).toISOString()});if(version!==shadeVersion||region!==regionVersion)return;
-    for(const f of snapshot.features)L.circle([f.geometry.coordinates[1],f.geometry.coordinates[0]],{radius:13,color:'#63799d',weight:0,fillOpacity:.24,interactive:false}).addTo(shadeLayer);
+    L.geoJSON(shadeSurface(snapshot),{pane:'shade-surface',renderer:shadeRenderer,interactive:false,style:{stroke:false,fill:true,fillColor:'#566a94',fillOpacity:.21,fillRule:'evenodd',smoothFactor:.5}}).addTo(shadeLayer);
+    $('layer').setAttribute('title',`그늘은 약 ${snapshot.spacing}m 간격으로 계산한 추정 영역입니다.`);
   }catch{ /* Route cards retain their own explicit coverage status. */ }
 }
 const searchControllers={};

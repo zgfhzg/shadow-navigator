@@ -12,6 +12,9 @@ export const getLanguage=()=>language;
 export function setLanguage(value){if(!Object.hasOwn(languages,value))return false;language=value;try{localStorage.setItem('shadow-language',value);}catch{}return true;}
 // Complete messages and numbered slots, rather than word substitution.
 export const messages=[
+['예상 그늘','Estimated shade','估計遮蔭'],
+['그늘은 약 {0}m 간격으로 계산한 추정 영역입니다.','Shade is an estimated area based on samples about {0} m apart.','遮蔭範圍係根據約每 {0} 米取樣估計。'],
+['그늘은 작은 원 대신 반투명 영역으로 표시합니다. 영역 경계는 표본 사이를 보간한 추정치이며, 색칠되지 않은 곳도 자료 부족으로 그늘을 평가하지 못한 곳일 수 있습니다.','Shade appears as translucent areas. Boundaries interpolate between samples. Uncoloured areas may also mean insufficient data to assess shade.','遮蔭以半透明範圍顯示，邊界係根據取樣點估計。冇上色嘅地方亦可能因資料不足而未能評估遮蔭。'],
 ['{0} 가능한 검색 결과를 표시합니다.','{0} Showing available search results.','{0} 現顯示可用嘅搜尋結果。'],
 ['홍콩 정부 · 건물명·주소 검색','Hong Kong Government · Buildings & addresses','香港政府・樓宇名稱及地址搜尋'],
 ['홍콩 정부 검색 응답을 읽지 못했어요.','Could not read the government search response.','讀取唔到政府搜尋回應。'],

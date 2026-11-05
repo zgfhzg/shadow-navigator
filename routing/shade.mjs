@@ -98,10 +98,12 @@ export function sampleGround(scene,bounds,epoch,spacing=30){
   const min=scene.project(bounds.slice(0,2)),max=scene.project(bounds.slice(2));
   const nx=Math.ceil((max[0]-min[0])/spacing),ny=Math.ceil((max[1]-min[1])/spacing);
   if(nx*ny>5000)throw new Error('그늘 표본 범위가 너무 큽니다.');
-  const solar=scene.sun(epoch),stats={shade:0,sun:0,unknown:0,night:0},features=[];
+  const solar=scene.sun(epoch),stats={shade:0,sun:0,unknown:0,night:0},features=[],values=Array(nx*ny).fill(0);
   for(let x=0;x<nx;x++)for(let y=0;y<ny;y++){
     const coordinate=scene.unproject([Math.min(max[0],min[0]+(x+.5)*spacing),Math.min(max[1],min[1]+(y+.5)*spacing)]),state=classifyPoint(scene,coordinate,epoch,{solar});stats[state]++;
+    if(state==='shade')values[y*nx+x]=1;
     if(state==='shade')features.push({type:'Feature',properties:{state},geometry:{type:'Point',coordinates:coordinate}});
   }
-  return {type:'FeatureCollection',features,spacing,departure:epoch,stats,buildingStats:scene.stats,source:scene.source,model:'ground samples; opaque buildings; flat terrain; 500m solar ray'};
+  const origin=scene.unproject(min),east=scene.unproject([min[0]+spacing,min[1]]),north=scene.unproject([min[0],min[1]+spacing]);
+  return {type:'FeatureCollection',features,spacing,grid:{columns:nx,rows:ny,origin,step:[east[0]-origin[0],north[1]-origin[1]],bounds,values},departure:epoch,stats,buildingStats:scene.stats,source:scene.source,model:'ground samples; opaque buildings; flat terrain; 500m solar ray'};
 }

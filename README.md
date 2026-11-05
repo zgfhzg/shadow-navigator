@@ -118,3 +118,11 @@ Lands Department logo is displayed on the map. Official asset source:
 https://www.landsd.gov.hk/images/landsd_logo-sm.svg
 The government service provides building/place/address names; it does not
 provide a pedestrian entrance or authorize access to the named premises.
+
+### Shade overlay
+Ground samples now render as a single translucent contour surface rather than
+separate circles. The renderer interpolates the binary sample grid and keeps
+non-shaded gaps and disconnected patches separate. Boundaries are approximate,
+not measured shadow outlines. Route costs and exposure statistics are unchanged.
+The overlay uses its own canvas pane below routes, pins and GPS. Vendored
+d3-contour 4.0.3 and d3-array are bundled locally with their ISC licenses.
