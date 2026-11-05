@@ -1,3 +1,4 @@
+import {searchHongKong,mergePlaceResults} from './hongkong-search.mjs';
 import {installLanguageUI,getLanguage,languages,translate,placeLabel,prepareLanguage} from './i18n.mjs';
 await prepareLanguage(getLanguage());
 installLanguageUI();
@@ -17,7 +18,7 @@ let regionVersion=0,routeVersion=0,shadeVersion=0,timeTimer,timeRecalcWanted=fal
 window.addEventListener('routing-progress',event=>{if(state.pendingRoute)$('route-status').textContent=event.detail;});
 const map=L.map('map',{zoomControl:false,preferCanvas:true,attributionControl:true}).setView([22.2819,114.1589],16);
 map.attributionControl.setPrefix(false);
-const buildingCredit='Buildings: <a href="https://portal.csdi.gov.hk/csdi-webpage/dataset/landsd_rcd_1637211194312_35158">© HKSAR Government · Lands Department / CSDI</a>';map.attributionControl.addAttribution(buildingCredit);
+const buildingCredit='<a href="https://www.landsd.gov.hk/"><img src="./vendor/landsd-logo.svg" alt="Lands Department" style="height:18px;max-width:95px;vertical-align:middle;margin-right:4px"></a>Buildings: <a href="https://portal.csdi.gov.hk/csdi-webpage/dataset/landsd_rcd_1637211194312_35158">© HKSAR Government · Lands Department / CSDI</a>';map.attributionControl.addAttribution(buildingCredit);
 const baseOptions=tileOptions(mapAccess?mapConfig:{});
 let tiles=L.tileLayer(baseOptions.url,{...baseOptions,keepBuffer:1}).addTo(map);
 map.on('moveend',()=>{const c=map.getCenter(),city=regionAt([c.lng,c.lat],state.country,state.available);$('area-name').textContent=city?`${regions[city].name} · ${regions[city].area}`:countries[state.country].name+' 지도';clearTimeout(mapShadeTimer);mapShadeTimer=setTimeout(()=>{if(state.ready)refreshShade();},350);});
@@ -61,7 +62,7 @@ async function selectPlace(id,place){
   map.setView([place.coordinate[1],place.coordinate[0]],16,{animate:false});$('route-status').textContent='지도를 이동했어요. 장소명을 검색하거나 지도에서 출발·도착을 지정하세요.';return;
  }
  state[id]=null;drawPins();clearRoutes();
- if(place.source==='maptiler'){
+ if(['maptiler','landsd'].includes(place.source)){
   $('route-status').textContent='선택한 장소 인근의 보행로를 확인하고 있어요…';
   place=await connectPlace(place,{country,available:state.available,mode:state.mode,snap:(city,point,mode)=>api('/api/snap',{city,point:JSON.stringify(point),mode})});
   if(selection!==selectionVersion||country!==state.country)return;
@@ -78,15 +79,26 @@ for(const id of ['origin','destination']){
     if(!state.ready&&!mapConfig.mapKey){$('route-status').textContent='먼저 지원 지역을 선택해 주세요.';return;}
     controller.abort?.abort();const requestAbort=new AbortController();controller.abort=requestAbort;const query=input.value.trim(),serial=++controller.version,country=state.country;box.hidden=false;box.replaceChildren();input.setAttribute('aria-expanded','true');
     try{const localResults=await Promise.allSettled(countries[country].cities.filter(city=>state.available[city]).map(async city=>(await api('/api/places',{city,q:query,mode:state.mode})).map(place=>({...place,city}))));const groups=localResults.filter(result=>result.status==='fulfilled').map(result=>result.value);if(serial!==controller.version||country!==state.country)return;const q=query.toLowerCase();const aliases={tokyo:['도쿄','tokyo','東京'],osaka:['오사카','osaka','大阪'],kyoto:['교토','kyoto','京都'],hongkong:['홍콩','hong kong','香港']};const areas=q?countries[country].cities.filter(city=>aliases[city].some(name=>name.toLowerCase().includes(q))).map(city=>({type:'area',city,label:regions[city].name+' 지도에서 보기',coordinate:regions[city].center})):[];let items=[...areas,...groups.flat()].slice(0,18),providerError='';
-      if(mapConfig.mapKey&&q.length>=2){try{const center=map.getCenter();const remote=await searchMapTiler(query,{key:mapConfig.mapKey,country,language:languages[getLanguage()].search,proximity:[center.lng,center.lat],signal:AbortSignal.any([requestAbort.signal,AbortSignal.timeout(10000)])});items=remote.length?remote:items;}catch(error){if(error.name==='AbortError')return;providerError=error.message;}}
+      if(q.length>=2){
+       const center=map.getCenter(),proximity=[center.lng,center.lat],signal=AbortSignal.any([requestAbort.signal,AbortSignal.timeout(10000)]);
+       const [government,remote]=await Promise.allSettled([
+        country==='hongkong'?searchHongKong(query,{signal,proximity}):Promise.resolve([]),
+        mapConfig.mapKey?searchMapTiler(query,{key:mapConfig.mapKey,country,language:languages[getLanguage()].search,proximity,signal}):Promise.resolve([])
+       ]);
+       if(requestAbort.signal.aborted)return;
+       items=mergePlaceResults(government.status==='fulfilled'?government.value:[],items,remote.status==='fulfilled'?remote.value:[]);
+       const errors=[government,remote].filter(r=>r.status==='rejected'&&r.reason.name!=='AbortError');
+       providerError=errors.map(r=>r.reason.message).join(' ');
+       if(!items.length&&[government,remote].some(r=>r.status==='rejected'&&r.reason.name==='AbortError'))providerError='장소 검색 시간이 초과됐어요. 다시 시도해 주세요.';
+      }
       if(serial!==controller.version||country!==state.country)return;controller.items=items;controller.active=-1;box.replaceChildren();
-      if(providerError){const notice=document.createElement('div');notice.className='empty';notice.textContent=providerError+' 저장된 장소·거리 검색 결과를 표시합니다.';box.append(notice);}
+      if(providerError){const notice=document.createElement('div');notice.className='empty';notice.textContent=providerError+' 가능한 검색 결과를 표시합니다.';box.append(notice);}
       if(!items.length){const empty=document.createElement('div');empty.className='empty';empty.textContent=mapConfig.mapKey?'검색 결과가 없어요. 상세 주소나 현지어 이름으로 다시 검색해 주세요.':'현재 지원 범위에서 찾지 못했어요. 지도 점선 안을 선택하거나 다른 장소명으로 검색해 주세요.';box.append(empty);}
-      items.forEach((place,i)=>{const button=document.createElement('button');button.type='button';button.id=`${id}-option-${i}`;button.setAttribute('role','option');button.setAttribute('aria-selected','false');const name=document.createElement('span');name.textContent=displayPlace(place);const sub=document.createElement('small');sub.textContent=place.source==='maptiler'?(place.type==='area'?'MapTiler · 지도에서 지역 보기':regionAt(place.coordinate,country,state.available)?'MapTiler · 선택 후 보행로 연결 확인':'MapTiler · 지도 표시 가능 / 그늘길 지원 범위 밖'):`${regions[place.city].name} · ${regions[place.city].area}${place.accessDistance>5?' · 인근 보행로 기준':''}`;button.append(name,sub);button.onclick=()=>selectPlace(id,place);box.append(button);});
+      items.forEach((place,i)=>{const button=document.createElement('button');button.type='button';button.id=`${id}-option-${i}`;button.setAttribute('role','option');button.setAttribute('aria-selected','false');const name=document.createElement('span');name.textContent=displayPlace(place);const sub=document.createElement('small');sub.textContent=place.source==='landsd'?'홍콩 정부 · 건물명·주소 검색':place.source==='maptiler'?(place.type==='area'?'MapTiler · 지도에서 지역 보기':regionAt(place.coordinate,country,state.available)?'MapTiler · 선택 후 보행로 연결 확인':'MapTiler · 지도 표시 가능 / 그늘길 지원 범위 밖'):`${regions[place.city].name} · ${regions[place.city].area}${place.accessDistance>5?' · 인근 보행로 기준':''}`;button.append(name,sub);button.onclick=()=>selectPlace(id,place);box.append(button);});
     }catch(e){if(serial===controller.version&&e.name!=='AbortError'){box.replaceChildren();const empty=document.createElement('div');empty.className='empty';empty.textContent=e.message;box.append(empty);}}
   };
   input.onfocus=()=>controller.show();
-  input.oninput=()=>{hideOptions(id);state[id]=null;drawPins();clearRoutes();clearTimeout(controller.timer);selectionVersion++;controller.timer=setTimeout(controller.show,mapConfig.mapKey?350:150);};
+  input.oninput=()=>{hideOptions(id);state[id]=null;drawPins();clearRoutes();clearTimeout(controller.timer);selectionVersion++;controller.timer=setTimeout(controller.show,state.country==='hongkong'?500:mapConfig.mapKey?350:150);};
   input.onkeydown=event=>{
     if(event.key==='Escape'){hideOptions(id);return;}
     if(event.key==='ArrowDown'||event.key==='ArrowUp'){event.preventDefault();if(box.hidden){controller.show();return;}if(!controller.items.length)return;controller.active=(controller.active+(event.key==='ArrowDown'?1:-1)+controller.items.length)%controller.items.length;[...box.querySelectorAll('button')].forEach((b,i)=>b.setAttribute('aria-selected',i===controller.active));input.setAttribute('aria-activedescendant',`${id}-option-${controller.active}`);box.querySelectorAll('button')[controller.active]?.scrollIntoView({block:'nearest'});}
@@ -142,7 +154,7 @@ async function loadRegion(city=countries[state.country].cities.find(c=>state.ava
   catch(e){if(version===regionVersion){$('location-status').textContent=e.message;for(const id of ['origin','destination'])$(id).disabled=!mapConfig.mapKey;$('route-status').textContent=mapConfig.mapKey?'장소 검색과 지도 표시는 사용할 수 있지만, 이 지역의 길찾기 자료를 불러오지 못했어요.':'지역 자료를 불러오지 못했어요. 다시 선택해 주세요.';}}
 }
 $('region').onchange=async()=>{selectionVersion++;state.country=$('region').value;map.attributionControl.removeAttribution(buildingCredit);if(state.country==='hongkong')map.attributionControl.addAttribution(buildingCredit);if(state.pick)pickMode(state.pick);drawCoverage();const c=countries[state.country];map.setView([c.center[1],c.center[0]],c.zoom,{animate:false});await loadRegion(undefined,false);};$('search').onclick=computeRoutes;
-for(const mode of ['walk','bike'])$(mode).onclick=()=>{if(state.mode===mode)return;selectionVersion++;state.mode=mode;for(const m of ['walk','bike']){$(m).classList.toggle('active',m===mode);$(m).setAttribute('aria-pressed',m===mode);}clearRoutes();for(const id of ['origin','destination']){if(['maptiler','gps'].includes(state[id]?.source)||state[id]?.modes&&!state[id].modes.includes(mode)){state[id]=null;$(id).value='';}hideOptions(id);}drawPins();};
+for(const mode of ['walk','bike'])$(mode).onclick=()=>{if(state.mode===mode)return;selectionVersion++;state.mode=mode;for(const m of ['walk','bike']){$(m).classList.toggle('active',m===mode);$(m).setAttribute('aria-pressed',m===mode);}clearRoutes();for(const id of ['origin','destination']){if(['maptiler','landsd','gps'].includes(state[id]?.source)||state[id]?.modes&&!state[id].modes.includes(mode)){state[id]=null;$(id).value='';}hideOptions(id);}drawPins();};
 $('swap').onclick=()=>{selectionVersion++;[state.origin,state.destination]=[state.destination,state.origin];$('origin').value=displayPlace(state.origin);$('destination').value=displayPlace(state.destination);clearRoutes();drawPins();};
 function timeChanged(){timeRecalcWanted ||= state.routes.length>0;try{clock.select($('date').value,+$('time').value);$('time-error').hidden=true;displayClock();clearRoutes();clearTimeout(timeTimer);timeTimer=setTimeout(()=>{const recalc=timeRecalcWanted;timeRecalcWanted=false;refreshShade();if(recalc&&state.origin&&state.destination)computeRoutes({scroll:false});},200);}catch(e){$('time-error').textContent=e.message;$('time-error').hidden=false;}}
 $('time').oninput=timeChanged;$('date').onchange=timeChanged;

@@ -96,3 +96,25 @@ npm run verify:shade
 자동 테스트와 별도 지역별 실제 데이터 통합 검증. 메인 화면의 검색 결과 선택 → 경로 비교 → 지도 표시, 지역 전환 및 모바일 흐름은 브라우저에서 확인합니다. 검증 기록: `data/hongkong-country-verification.json`, `data/regions-verification.json`, `data/hongkong-shade-verification.json`. 현장 정확도 검증을 대체하지 않습니다.
 
 출처: [OSM / ODbL](https://www.openstreetmap.org/copyright), [타일 이용 정책](https://operations.osmfoundation.org/policies/tiles/), [Leaflet](https://leafletjs.com/), [Overture / ODbL](https://docs.overturemaps.org/attribution/), [NOAA 태양 계산](https://gml.noaa.gov/grad/solcalc/solareqns.PDF).
+
+
+### Hong Kong building and address search
+Hong Kong searches combine Lands Department Location Search API results, the
+committed local index, and MapTiler results instead of replacing local matches.
+The government service needs no API key and supports public building names,
+addresses, facilities and districts in English and traditional Chinese. Search
+terms are sent to that service; a 500ms debounce, cancellation, 5-minute memory
+cache and 32-query cache bound limit requests. A small verified Korean alias list
+maps e.g. 센트럴 플라자 to 中環廣場; it is not universal Korean translation.
+Government HK1980 grid coordinates are transformed from EPSG:2326 to WGS84
+using locally bundled Proj4js (license in dist/vendor). Results retain their real
+coordinates until selection, then connect to an eligible real path within 50m.
+A search result does not imply routability, entrance availability or public access.
+Public source: https://portal.csdi.gov.hk/csdi-webpage/apidoc/LocationSearchAPI
+Regression fixture: fixtures/public/hongkong-government-search.json (Lands
+Department response for 中環廣場, retrieved 2026-11-05). No key is required.
+
+Lands Department logo is displayed on the map. Official asset source:
+https://www.landsd.gov.hk/images/landsd_logo-sm.svg
+The government service provides building/place/address names; it does not
+provide a pedestrian entrance or authorize access to the named premises.

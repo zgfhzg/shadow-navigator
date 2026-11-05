@@ -12,6 +12,13 @@ export const getLanguage=()=>language;
 export function setLanguage(value){if(!Object.hasOwn(languages,value))return false;language=value;try{localStorage.setItem('shadow-language',value);}catch{}return true;}
 // Complete messages and numbered slots, rather than word substitution.
 export const messages=[
+['{0} 가능한 검색 결과를 표시합니다.','{0} Showing available search results.','{0} 現顯示可用嘅搜尋結果。'],
+['홍콩 정부 · 건물명·주소 검색','Hong Kong Government · Buildings & addresses','香港政府・樓宇名稱及地址搜尋'],
+['홍콩 정부 검색 응답을 읽지 못했어요.','Could not read the government search response.','讀取唔到政府搜尋回應。'],
+['홍콩 정부 장소 검색에 연결하지 못했어요.','Could not connect to Hong Kong government search.','連接唔到香港政府地點搜尋。'],
+['홍콩 정부 장소 검색을 사용할 수 없어요.','Hong Kong government search is unavailable.','暫時用唔到香港政府地點搜尋。'],
+['장소 검색 시간이 초과됐어요. 다시 시도해 주세요.','Place search timed out. Try again.','地點搜尋逾時，請再試。'],
+['홍콩 검색에는 정부 건물명·주소 검색을 함께 사용합니다. 검색어는 홍콩 정부 검색 서비스에 전달됩니다.','Hong Kong searches also use government building and address search. Search terms are sent to the Hong Kong government search service.','香港搜尋同時使用政府樓宇名稱及地址搜尋，搜尋字詞會傳送到香港政府搜尋服務。'],
 ['홍콩의 지하 통로와 고가 보행교는 공개 지도에 연결이 기록된 구간을 안내합니다. 운영 시간과 현장 출입 제한을 확인해 주세요.','Hong Kong routes use underground passages and elevated walkways where connections are mapped. Check opening hours and access restrictions on site.','香港路線採用公開地圖上有連接紀錄嘅地底通道同行人天橋。請留意開放時間同現場通行限制。'],
 ['지하 통로','Underground passage','地底通道'],
 ['고가 보행교','Elevated walkway','行人天橋'],
@@ -74,7 +81,7 @@ export function placeLabel(place,lang=language,country='hongkong'){
  return lang==='yue'&&country==='hongkong'&&hongKongText&&/\p{Script=Han}/u.test(label)?hongKongText(label):label;
 }
 function rawPlaceLabel(place,lang){
- const label=place?.label||'';if(lang==='ko'||place?.source==='maptiler'||!/[가-힣]/.test(label))return translate(label,lang);
+ const label=place?.source==='landsd'?(lang==='yue'?place.labelZH:place.labelEN)||place.label||'':place?.label||'';if(lang==='ko'||place?.source==='maptiler'||!/[가-힣]/.test(label))return translate(label,lang);
  const terms=Array.isArray(place.terms)?place.terms:[];
  const original=terms.find(term=>!/[가-힣]/.test(term)&&/[\p{Script=Han}]/u.test(term));
  if(lang==='yue'&&original)return original;
